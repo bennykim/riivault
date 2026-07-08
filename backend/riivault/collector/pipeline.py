@@ -14,6 +14,12 @@ logger = logging.getLogger("riivault.pipeline")
 
 async def collect_once(settings: Settings | None = None) -> dict:
     settings = settings or get_settings()
+    # No-op cleanly when Reddit credentials are absent (e.g. before API approval),
+    # so scheduled/CI runs still proceed to the HN + aggregate steps.
+    if not settings.reddit_client_id:
+        logger.info("reddit collection skipped (REDDIT_CLIENT_ID not set)")
+        return {"api_calls": 0, "items": 0, "errors": 0, "rate_limited": False,
+                "skipped": "no_credentials"}
     bucket = TokenBucket(settings.reddit_qpm)
     totals = {"api_calls": 0, "items": 0, "errors": 0, "rate_limited": False}
 

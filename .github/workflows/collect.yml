@@ -1,0 +1,57 @@
+name: collect
+
+# Durable, serverless collection: runs the incremental collect + aggregate +
+# compliance purge on a schedule. No always-on host required — the DB is a
+# managed Postgres (Neon/Supabase), reachable over SSL from the runner.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL          managed Postgres connection string (required)
+#   REDDIT_CLIENT_ID      Reddit app id      (optional until API approval — Reddit step no-ops without it)
+#   REDDIT_CLIENT_SECRET  Reddit app secret
+#   REDDIT_USER_AGENT     e.g. "web:riivault:v0.1 (by /u/yourname)"
+#   ANTHROPIC_API_KEY     optional — enables LLM VoC extraction (else VADER only)
+
+on:
+  schedule:
+    - cron: "0 */2 * * *" # every 2 hours (UTC)
+  workflow_dispatch: {} # manual "Run workflow" button
+
+# Never overlap two collection runs.
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+      REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+      REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Collect Reddit (no-op until API approved)
+        run: uv run riivault collect-once
+
+      - name: Collect Hacker News
+        run: uv run riivault collect-hn
+
+      - name: Aggregate derived time-series (Reddit + HN)
+        run: uv run riivault aggregate
+
+      - name: Purge expired / deleted raw content (48h compliance)
+        run: uv run riivault purge

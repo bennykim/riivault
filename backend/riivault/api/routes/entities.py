@@ -11,29 +11,36 @@ router = APIRouter()
 
 
 async def fetch_tracked(conn: asyncpg.Connection) -> list[dict]:
-    """Tracked entities with 7d-vs-prior-7d change and a 7-day daily spark."""
-    source_id = await conn.fetchval("SELECT source_id FROM source WHERE name = 'reddit'")
+    """Tracked entities with 7d-vs-prior-7d change and a 7-day daily spark.
+
+    Mentions are combined across all sources: the per-day counts are summed
+    (subreddit='' overall rows) before the spark/window aggregates, so an entity
+    seen on both Reddit and Hacker News on a given day contributes one merged
+    daily value.
+    """
     rows = await conn.fetch(
         """
+        WITH daily AS (
+            SELECT entity_id, day, SUM(mention_count) AS cnt
+              FROM mention_daily
+             WHERE subreddit = '' AND day > CURRENT_DATE - 14
+             GROUP BY entity_id, day
+        )
         SELECT e.entity_id, e.type, e.canonical_name AS name,
                e.metadata->>'context' AS context,
-               COALESCE(SUM(m.mention_count)
-                        FILTER (WHERE m.day > CURRENT_DATE - 7), 0) AS last7,
-               COALESCE(SUM(m.mention_count)
-                        FILTER (WHERE m.day <= CURRENT_DATE - 7
-                                  AND m.day > CURRENT_DATE - 14), 0) AS prev7,
-               COALESCE(array_agg(m.mention_count ORDER BY m.day)
-                        FILTER (WHERE m.day > CURRENT_DATE - 7), '{}'::int[]) AS spark
+               COALESCE(SUM(d.cnt)
+                        FILTER (WHERE d.day > CURRENT_DATE - 7), 0) AS last7,
+               COALESCE(SUM(d.cnt)
+                        FILTER (WHERE d.day <= CURRENT_DATE - 7
+                                  AND d.day > CURRENT_DATE - 14), 0) AS prev7,
+               COALESCE(array_agg(d.cnt ORDER BY d.day)
+                        FILTER (WHERE d.day > CURRENT_DATE - 7), '{}'::bigint[]) AS spark
           FROM entity e
-          LEFT JOIN mention_daily m
-            ON m.entity_id = e.entity_id
-           AND m.subreddit = ''
-           AND m.source_id = $1
+          LEFT JOIN daily d ON d.entity_id = e.entity_id
          WHERE (e.metadata->>'tracked')::boolean IS TRUE
          GROUP BY e.entity_id
          ORDER BY e.entity_id
-        """,
-        source_id,
+        """
     )
     items: list[dict] = []
     for r in rows:

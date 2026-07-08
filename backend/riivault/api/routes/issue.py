@@ -35,14 +35,11 @@ async def issue_current(pool: asyncpg.Pool = Depends(get_pool)):
             raise HTTPException(status_code=404, detail="no published issue")
 
         payload = issue["payload"] or {}
-        source_id = await conn.fetchval(
-            "SELECT source_id FROM source WHERE name = 'reddit'"
-        )
         tracked = await fetch_tracked(conn)
         pain_points = await fetch_pain_points(conn, days=7, limit=10)
         emerging = await fetch_signals(conn, limit=6, order="strength")
         sentiment_focus = await _sentiment_focus(
-            conn, source_id, payload.get("sentiment_focus")
+            conn, payload.get("sentiment_focus")
         )
 
     lead = dict(payload.get("lead") or {})
@@ -71,7 +68,7 @@ async def issue_current(pool: asyncpg.Pool = Depends(get_pool)):
     }
 
 
-async def _sentiment_focus(conn, source_id, focus_ref: dict | None) -> dict | None:
+async def _sentiment_focus(conn, focus_ref: dict | None) -> dict | None:
     if not focus_ref:
         return None
     entity_id = focus_ref.get("entity_id")
@@ -79,14 +76,18 @@ async def _sentiment_focus(conn, source_id, focus_ref: dict | None) -> dict | No
     if entity_id is None:
         return {"label": label, "current": None, "trend": "flat", "series": []}
 
+    # Pool sentiment across all sources per day, weighted by each source's sample_size.
     rows = await conn.fetch(
         """
-        SELECT day, sentiment_mean
+        SELECT day,
+               SUM(sentiment_mean * sample_size) / NULLIF(SUM(sample_size), 0)
+                   AS sentiment_mean
           FROM sentiment_daily
-         WHERE entity_id = $1 AND source_id = $2
+         WHERE entity_id = $1
+         GROUP BY day
          ORDER BY day
         """,
-        entity_id, source_id,
+        entity_id,
     )
     series = [
         {"period": r["day"].isoformat(), "value": round(float(r["sentiment_mean"]), 3)}

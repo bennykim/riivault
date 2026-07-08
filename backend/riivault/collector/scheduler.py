@@ -14,7 +14,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from ..config import Settings, get_settings
 from ..db import pool_context
-from .aggregate import run_aggregate
+from .aggregate import run_aggregate, run_aggregate_hn
+from .hackernews import collect_once_hn
 from .pipeline import collect_once
 from .publish import publish_issue
 from .purge import run_purge
@@ -24,8 +25,18 @@ logger = logging.getLogger("riivault.scheduler")
 
 
 async def collect_and_aggregate(settings: Settings) -> None:
-    await collect_once(settings)
-    await run_aggregate(settings)
+    # Each source is isolated so one failing does not skip the other.
+    try:
+        await collect_once(settings)
+        await run_aggregate(settings)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("reddit collect/aggregate failed: %s", exc)
+    if settings.hn_enabled:
+        try:
+            await collect_once_hn(settings)
+            await run_aggregate_hn(settings)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("hackernews collect/aggregate failed: %s", exc)
 
 
 async def snapshot_subreddits(settings: Settings | None = None) -> int:

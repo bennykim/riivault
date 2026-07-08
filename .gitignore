@@ -1,0 +1,28 @@
+# env / secrets
+.env
+.env.local
+.env*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# tooling / os
+.omc/
+.vscode/
+.DS_Store
+.idea/
+
+# business strategy — keep private (do not publish)
+BUSINESS_PLAN.md

@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>riivault — Reddit Data API Access Request</title>
+<style>
+  @page { margin: 22mm 20mm; }
+  body { font: 12px/1.55 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 19px; margin: 0 0 2px; }
+  .sub { color: #666; font-size: 12px; margin: 0 0 18px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #b5361a; border-bottom: 1px solid #e5e2da; padding-bottom: 4px; margin: 22px 0 8px; }
+  ul { margin: 6px 0 6px; padding-left: 18px; }
+  li { margin: 3px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 11.5px; margin: 6px 0; }
+  td, th { border: 1px solid #ddd; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f5f3ee; }
+  .k { font-weight: 600; white-space: nowrap; }
+  code { background: #f2f0ea; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  .foot { margin-top: 24px; font-size: 10.5px; color: #888; border-top: 1px solid #e5e2da; padding-top: 8px; }
+</style>
+
+<h1>riivault — Reddit Data API Access Request</h1>
+<p class="sub">Non-commercial trend-research project · single niche · derived aggregates only · v0.1</p>
+
+<h2>1. What the project is</h2>
+<p>riivault is a <strong>non-commercial research project</strong> that turns public discussion in one
+niche — SaaS / indie-hacker communities — into <strong>derived time-series signals</strong>
+(daily mention counts, sentiment trends, and normalized feature-request / pain-point themes).
+It publishes free public insight summaries. There is no paywall, no data resale, and no monetized
+product or service.</p>
+
+<h2>2. Exactly what data we read</h2>
+<ul>
+  <li><strong>Endpoints:</strong> subreddit listings (<code>/r/{sub}/new</code>, <code>/r/{sub}/hot</code>) and comment trees for matched threads, read-only, via OAuth script app.</li>
+  <li><strong>Scope:</strong> a fixed, small list of ~20 public subreddits — r/SaaS, r/startups, r/Entrepreneur, r/indiehackers, r/microsaas, r/webdev, r/nocode, and similar.</li>
+  <li><strong>Frequency:</strong> low-rate incremental polling with cursor-based dedup; strictly within the free tier limit of <strong>100 QPM per OAuth client</strong>, enforced by a token-bucket scheduler.</li>
+  <li>No private data, no user DMs, no writes, no voting, no automated posting.</li>
+</ul>
+
+<h2>3. How we handle data (compliance-first)</h2>
+<table>
+  <tr><th>Requirement</th><th>Our implementation</th></tr>
+  <tr><td class="k">Raw content storage</td><td>Raw text held only in a temporary buffer with a <strong>≤48h TTL</strong>, used solely for processing, then permanently deleted. Raw content is never a retained asset.</td></tr>
+  <tr><td class="k">Deletion / removal honoring</td><td>When content is deleted or removed on Reddit, our raw copy is purged and any derived reference is invalidated. A deletion log tracks compliance.</td></tr>
+  <tr><td class="k">What we retain</td><td>Only <strong>derived aggregates</strong>: daily mention counts, sentiment averages, and de-duplicated feature-request themes. No reconstructable raw archive.</td></tr>
+  <tr><td class="k">AI / model training</td><td>Reddit content is <strong>never</strong> used as training input for any model.</td></tr>
+  <tr><td class="k">Redistribution</td><td>No raw Reddit content is redistributed. Only aggregate, non-identifying statistics are shown publicly.</td></tr>
+</table>
+
+<h2>4. Why the Developer Platform (Devvit) does not fit</h2>
+<p>riivault monitors ~20 public subreddits that we do <strong>not</strong> moderate. Devvit apps are
+installed per-subreddit by that community's own moderators and are scoped to subreddits the developer
+moderates, so they structurally cannot observe communities we do not run. riivault also stores derived
+time-series data in an external database (Postgres/TimescaleDB + pgvector) and publishes insights on an
+off-Reddit public website and newsletter. Devvit's in-Reddit app model — Reddit-hosted Redis/KV storage,
+rendering inside the platform — supports none of these. The Data API is the only viable path for this
+read-only, non-commercial use case.</p>
+
+<h2>5. Commercial status</h2>
+<p><strong>Non-commercial.</strong> No monetization, no business entity operating this, no product sold.
+Output is free public insight. Should this ever change, we understand a separate commercial
+agreement would be required and would request it before any commercial use.</p>
+
+<h2>6. Technical summary</h2>
+<ul>
+  <li>App type: <strong>script</strong> (personal, read-only).</li>
+  <li>Auth: OAuth2 client credentials; unique descriptive User-Agent in the required
+      <code>&lt;platform&gt;:&lt;app-id&gt;:&lt;version&gt; (by /u/username)</code> format.</li>
+  <li>Storage split: transient raw buffer (≤48h) vs. permanent derived aggregates — enforced in code.</li>
+</ul>
+
+<p class="foot">Prepared for Reddit Data Access Request review. Contact and Reddit username provided in the ticket.
+This document describes actual implemented behavior, not intent.</p>

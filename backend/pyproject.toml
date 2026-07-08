@@ -1,0 +1,48 @@
+[project]
+name = "riivault"
+version = "0.1.0"
+description = "riivault backend — Reddit signal intelligence (collector, NLP, FastAPI)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.29",
+    "asyncpraw>=7.7",
+    "apscheduler>=3.10",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "email-validator>=2.1",
+    "vaderSentiment>=3.3.2",
+    "anthropic>=0.34",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+riivault = "riivault.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["riivault"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501"]

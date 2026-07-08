@@ -1,0 +1,21 @@
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    container_name: riivault-db
+    environment:
+      POSTGRES_USER: riivault
+      POSTGRES_PASSWORD: riivault
+      POSTGRES_DB: riivault
+    ports:
+      - "5433:5432"
+    volumes:
+      - riivault-pgdata:/home/postgres/pgdata/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U riivault -d riivault"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  riivault-pgdata:

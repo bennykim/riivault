@@ -50,5 +50,7 @@ After this, collection is durable: every 2h the moat grows, no server to babysit
   point at the same `DATABASE_URL`. Collection does not depend on this.
 - **Weekly issue**: `publish-issue` is currently manual/weekly; wire it as a
   separate scheduled workflow once the editorial format from live data is set.
-- **Cross-source display**: the API reads `source='reddit'` today, so HN data
-  accumulates but is not yet shown on the site.
+  A published `weekly_issue` row is required for `/issue/current` (else it 404s
+  and the frontend falls back to sample data).
+- **Cross-source data**: the API already combines all sources (Reddit + HN);
+  surfacing it on the site only needs the API hosted and a weekly issue published.

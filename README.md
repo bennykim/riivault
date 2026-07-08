@@ -1,44 +1,56 @@
 # riivault
 
-Reddit 의견 데이터를 **파생 시계열 인텔리전스**(mention·sentiment·pain-point·emerging signal)로 가공해 보여주는 인사이트 미디어. 원문은 ≤48h 처리 버퍼에만 머물고, 영구 자산은 비식별 집계뿐이다.
+Turns public discussion into **derived time-series intelligence** — daily mention
+counts, sentiment trends, and recurring pain points / feature requests for a single
+niche (SaaS / indie-hacker communities). A non-commercial research project.
 
-- 기획: [BUSINESS_PLAN.md](BUSINESS_PLAN.md) · DB: [schema.sql](schema.sql) · API 계약: [docs/CONTRACT.md](docs/CONTRACT.md) · 최종 디자인: [design/index.html](design/index.html)
+Raw content is never a permanent asset: it lives in a ≤48h processing buffer, then
+is purged. Only de-identified aggregates are retained.
 
-## 구조
+## Sources
+
+- **Hacker News** — public Algolia API, no key required
+- **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval)
+
+## Layout
 
 ```
-backend/   Python 3.12 — asyncpraw 수집기 + 파생 파이프라인 + FastAPI (uv)
-web/       Next.js 15 — "This Week on Reddit" 프론트 (디자인 1:1 포팅)
-schema.sql Postgres 16 + TimescaleDB + pgvector DDL (compose가 자동 적용)
+backend/    Python 3.12 — collectors + derived pipeline + FastAPI (uv)
+web/        Next.js 15 — editorial frontend
+schema.sql  Postgres + pgvector DDL (TimescaleDB optional, deferred to scale)
+docs/       API contract (CONTRACT.md), deploy guide (DEPLOY.md)
 ```
 
 ## Quickstart
 
 ```bash
-cp .env.example .env            # Reddit/Anthropic 키는 선택 (없어도 데모 구동 가능)
-docker compose up -d db         # TimescaleDB :5433, schema.sql 자동 적용
+cp .env.example .env          # all keys optional — Hacker News needs none
+docker compose up -d db       # Postgres :5433, schema auto-applied
 
 cd backend
 uv sync
-uv run riivault seed-demo       # 데모 파생 데이터 + 주간 이슈 발행
-uv run riivault api             # FastAPI :8000
+uv run riivault seed-demo     # demo derived data + weekly issue
+uv run riivault api           # FastAPI :8000
 
-cd ../web
-npm install
-npm run dev                     # Next.js :3000
+cd ../web && npm install && npm run dev   # Next.js :3000
 ```
 
-실수집(선택, Reddit 키 필요):
+Collect real data:
 
 ```bash
-uv run riivault collect-once    # 1회 증분 수집 → 집계
-uv run riivault collect-hn      # Hacker News 1회 증분 수집 (키 불필요, Algolia 공개 API)
-uv run riivault scheduler       # 상시 스케줄러 (수집/집계/파기/주간 발행)
+uv run riivault collect-hn    # Hacker News (no key)
+uv run riivault collect-once  # Reddit (needs API keys)
+uv run riivault aggregate     # recompute derived time-series (all sources)
 ```
 
-## 컴플라이언스 원칙 (Reddit Responsible Builder Policy)
+## Compliance (Reddit Responsible Builder Policy)
 
-1. 원문(raw_*)은 48h 후 자동 파기 — 영구 자산은 파생·집계만.
-2. 삭제/수정 콘텐츠 감지 시 즉시 파기 + `deletion_log` 기록.
-3. 비상업 무료 tier(≤100 QPM) 준수 — 토큰버킷 기본 90 QPM.
-4. API/프론트는 파생 지표만 노출, 원문 재배포 없음.
+1. Raw content is auto-purged after 48h — only derived aggregates persist.
+2. Deleted / removed content is purged on detection and its references invalidated.
+3. Read-only and non-commercial, within the free-tier rate limit.
+4. Only derived metrics are exposed — no raw content is redistributed.
+
+## Deploy
+
+Durable, serverless collection (managed Postgres + GitHub Actions cron):
+see [docs/DEPLOY.md](docs/DEPLOY.md).

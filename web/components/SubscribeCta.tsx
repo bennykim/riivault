@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const INITIAL = "Free · 3,400+ founders & PMs · no raw content, ever.";
 const SUCCESS = "Subscribed — first issue lands next Tuesday. ✓";
 const INVALID = "Enter a valid email to get Tuesday’s signal.";
@@ -20,7 +19,7 @@ export default function SubscribeCta() {
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/api/v1/subscribe`, {
+      const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value }),

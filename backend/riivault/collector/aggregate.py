@@ -168,7 +168,8 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
                     )
                 voc_candidates.append(
                     {"day": day, "score": row["score"] or 0, "text": text,
-                     "reddit_id": row["reddit_id"], "entity_ids": entity_ids}
+                     "permalink": _permalink(row["reddit_id"]),
+                     "entity_ids": entity_ids}
                 )
 
             for row in comments:
@@ -192,7 +193,8 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
                     )
                 voc_candidates.append(
                     {"day": day, "score": row["score"] or 0, "text": text,
-                     "reddit_id": row["reddit_id"], "entity_ids": entity_ids}
+                     "permalink": _permalink(row["reddit_id"]),
+                     "entity_ids": entity_ids}
                 )
 
             mention_rows = aggregate_mentions(mention_events)
@@ -261,9 +263,8 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
     / ``aggregate_sentiments`` functions. HN has no subreddit concept, so every
     mention event uses ``subreddit=''`` (overall only). Affected days are DELETEd
     for ``source_id=hackernews`` then re-INSERTed, so re-running is safe.
-
-    VoC/topic extraction is intentionally deferred for HN (the Reddit VoC path is
-    Reddit-permalink specific).
+    VoC extraction runs on the same candidates (permalink = HN item URL) when an
+    Anthropic key is configured.
     """
     settings = settings or get_settings()
     async with pool_context(settings) as pool:
@@ -282,6 +283,7 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
 
             mention_events: list[dict[str, Any]] = []
             sentiment_events: list[dict[str, Any]] = []
+            voc_candidates: list[dict[str, Any]] = []
             affected_days: set[date] = set()
 
             for row in items:
@@ -304,6 +306,11 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
                     sentiment_events.append(
                         {"day": day, "entity_id": eid, "compound": compound}
                     )
+                voc_candidates.append(
+                    {"day": day, "score": row["points"] or 0, "text": text,
+                     "permalink": f"https://news.ycombinator.com/item?id={row['hn_id']}",
+                     "entity_ids": entity_ids}
+                )
 
             mention_rows = aggregate_mentions(mention_events)
             sentiment_rows = aggregate_sentiments(sentiment_events)
@@ -349,6 +356,11 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
                         ],
                     )
 
+            if settings.voc_enabled:
+                await _run_voc(conn, settings, voc_candidates)
+            else:
+                logger.info("VoC step skipped (no ANTHROPIC_API_KEY)")
+
     summary = {
         "days": len(affected_days),
         "mention_rows": len(mention_rows),
@@ -359,6 +371,11 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
 
 
 async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -> None:
+    """Classify the top-scored candidates into the VoC ledger.
+
+    Source-agnostic: each candidate carries its own ``permalink`` (Reddit
+    comments URL, HN item URL, ...), so any aggregation path can feed it.
+    """
     if not candidates:
         return
     top = sorted(candidates, key=lambda c: c["score"], reverse=True)[:VOC_TOP_N]
@@ -382,7 +399,7 @@ async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -
         if entity_id is None:
             entity_id = next(iter(cand["entity_ids"]))
         norm = rec["normalized_text"]
-        permalink = _permalink(cand["reddit_id"])
+        permalink = cand["permalink"]
         fr_id = await _upsert_feature_request(
             conn, entity_id, rec["kind"], norm, permalink, today
         )

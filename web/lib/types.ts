@@ -24,7 +24,8 @@ export interface Lead {
   dek: string;
   momentum_pct: number;
   threads: number;
-  comments: number;
+  /** null until a source provides comment counts (HN aggregation has none). */
+  comments: number | null;
   window_weeks: number;
   subreddits: string[];
   chart_title: string;
@@ -36,8 +37,9 @@ export interface Lead {
 export interface TrackedEntity {
   entity_id: number;
   name: string;
-  context: string;
-  change_pct: number;
+  context: string | null;
+  /** null when there were no mentions in the prior 7-day window. */
+  change_pct: number | null;
   spark: number[];
 }
 
@@ -52,7 +54,7 @@ export interface PainPoint {
 
 export interface SentimentFocus {
   label: string;
-  current: number;
+  current: number | null;
   trend: string;
   series: SeriesPoint[];
 }
@@ -88,7 +90,9 @@ export interface IssueData {
   lead: Lead;
   tracked: TrackedEntity[];
   pain_points: PainPoint[];
-  sentiment_focus: SentimentFocus;
-  migration: Migration;
+  /** null when no sentiment focus was selected for the issue. */
+  sentiment_focus: SentimentFocus | null;
+  /** null until migration analysis ships (real issues carry no migration yet). */
+  migration: Migration | null;
   emerging: EmergingSignal[];
 }

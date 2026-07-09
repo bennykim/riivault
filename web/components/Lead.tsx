@@ -21,11 +21,17 @@ export default function Lead({ issue }: { issue: IssueData }) {
             <b>
               <CountUp end={lead.threads} comma />
             </b>{" "}
-            threads ·{" "}
-            <b>
-              <CountUp end={lead.comments} comma />
-            </b>{" "}
-            comments
+            threads
+            {lead.comments != null && (
+              <>
+                {" "}
+                ·{" "}
+                <b>
+                  <CountUp end={lead.comments} comma />
+                </b>{" "}
+                comments
+              </>
+            )}
           </span>
           <span>{lead.subreddits.join(" · ")}</span>
           <span>

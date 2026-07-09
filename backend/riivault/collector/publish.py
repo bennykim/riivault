@@ -1,9 +1,10 @@
 """Weekly issue publication.
 
-Selects the week's lead entity (max 7d-over-prior-7d mention growth), generates
-a headline/dek (LLM if a key is present, otherwise a template), and upserts a
-``weekly_issue`` row whose ``payload`` holds the derived render snapshot
-(12-week lead series + migration) that the API merges into GET /issue/current.
+Selects the week's lead entity (max 7d-over-prior-7d mention growth, summed
+across all sources), generates a headline/dek (LLM if a key is present,
+otherwise a template), and upserts a ``weekly_issue`` row whose ``payload``
+holds the derived render snapshot (12-week lead series + migration) that the
+API merges into GET /issue/current.
 """
 
 from __future__ import annotations
@@ -34,10 +35,7 @@ async def publish_issue(settings: Settings | None = None) -> dict:
 
     async with pool_context(settings) as pool:
         async with pool.acquire() as conn:
-            source_id = await conn.fetchval(
-                "SELECT source_id FROM source WHERE name = 'reddit'"
-            )
-            lead = await _pick_lead(conn, source_id)
+            lead = await _pick_lead(conn)
             if lead is None:
                 logger.warning("publish_issue: no mention data for a lead; skipping")
                 return {"published": False, "reason": "no_data"}
@@ -46,7 +44,7 @@ async def publish_issue(settings: Settings | None = None) -> dict:
             lead_name = await conn.fetchval(
                 "SELECT canonical_name FROM entity WHERE entity_id = $1", lead_entity_id
             )
-            series = await _weekly_series(conn, source_id, lead_entity_id, weeks=12)
+            series = await _weekly_series(conn, lead_entity_id, weeks=12)
             momentum_pct = round(growth * 100, 1)
             headline, dek = await _headline(settings, lead_name, momentum_pct)
             threads = sum(point["value"] for point in series)
@@ -67,7 +65,7 @@ async def publish_issue(settings: Settings | None = None) -> dict:
                     "delta_value": series[-1]["value"] if series else 0,
                     "series": series,
                 },
-                "sentiment_focus": await _sentiment_focus_ref(conn, source_id),
+                "sentiment_focus": await _sentiment_focus_ref(conn),
                 "migration": None,
             }
 
@@ -93,18 +91,25 @@ async def publish_issue(settings: Settings | None = None) -> dict:
     return result
 
 
-async def _pick_lead(conn, source_id) -> tuple[int, float] | None:
+async def _pick_lead(conn) -> tuple[int, float] | None:
+    # Mentions are combined across all sources first (subreddit='' overall
+    # rows), mirroring the API's fetch_tracked, so the lead reflects the whole
+    # corpus rather than a single source.
     rows = await conn.fetch(
         """
+        WITH daily AS (
+            SELECT entity_id, day, SUM(mention_count) AS cnt
+              FROM mention_daily
+             WHERE subreddit = '' AND day > CURRENT_DATE - 14
+             GROUP BY entity_id, day
+        )
         SELECT entity_id,
-               COALESCE(SUM(mention_count) FILTER (WHERE day > CURRENT_DATE - 7), 0) AS last7,
-               COALESCE(SUM(mention_count) FILTER (
+               COALESCE(SUM(cnt) FILTER (WHERE day > CURRENT_DATE - 7), 0) AS last7,
+               COALESCE(SUM(cnt) FILTER (
                    WHERE day <= CURRENT_DATE - 7 AND day > CURRENT_DATE - 14), 0) AS prev7
-          FROM mention_daily
-         WHERE source_id = $1 AND subreddit = '' AND day > CURRENT_DATE - 14
+          FROM daily
          GROUP BY entity_id
-        """,
-        source_id,
+        """
     )
     best: tuple[int, float] | None = None
     for row in rows:
@@ -117,32 +122,40 @@ async def _pick_lead(conn, source_id) -> tuple[int, float] | None:
     return best
 
 
-async def _weekly_series(conn, source_id, entity_id, weeks: int = 12) -> list[dict]:
+async def _weekly_series(conn, entity_id, weeks: int = 12) -> list[dict]:
     rows = await conn.fetch(
         """
         SELECT (date_trunc('week', day))::date AS period, SUM(mention_count) AS value
           FROM mention_daily
-         WHERE source_id = $1 AND entity_id = $2 AND subreddit = ''
-           AND day > CURRENT_DATE - ($3::int * 7)
+         WHERE entity_id = $1 AND subreddit = ''
+           AND day > CURRENT_DATE - ($2::int * 7)
          GROUP BY 1 ORDER BY 1
         """,
-        source_id, entity_id, weeks,
+        entity_id, weeks,
     )
     return [{"period": r["period"].isoformat(), "value": int(r["value"])} for r in rows]
 
 
-async def _sentiment_focus_ref(conn, source_id) -> dict | None:
+async def _sentiment_focus_ref(conn) -> dict | None:
+    # Lowest pooled sentiment on the latest day, weighted by each source's
+    # sample_size (same pooling as the API's _sentiment_focus).
     row = await conn.fetchrow(
         """
-        SELECT sd.entity_id, e.canonical_name
-          FROM sentiment_daily sd
-          JOIN entity e ON e.entity_id = sd.entity_id
-         WHERE sd.source_id = $1
-           AND sd.day = (SELECT max(day) FROM sentiment_daily WHERE source_id = $1)
-         ORDER BY sd.sentiment_mean ASC
+        WITH pooled AS (
+            SELECT entity_id, day,
+                   SUM(sentiment_mean * sample_size)
+                       / NULLIF(SUM(sample_size), 0) AS mean
+              FROM sentiment_daily
+             GROUP BY entity_id, day
+        )
+        SELECT p.entity_id, e.canonical_name
+          FROM pooled p
+          JOIN entity e ON e.entity_id = p.entity_id
+         WHERE p.day = (SELECT max(day) FROM sentiment_daily)
+           AND p.mean IS NOT NULL
+         ORDER BY p.mean ASC
          LIMIT 1
-        """,
-        source_id,
+        """
     )
     if not row:
         return None
@@ -156,8 +169,10 @@ async def _headline(settings: Settings, lead_name: str, momentum_pct: float) -> 
 
             client = AsyncAnthropic(api_key=settings.anthropic_api_key)
             prompt = (
-                "Write a concise newsletter headline and one-sentence dek for a Reddit "
-                "trend report. Use ONLY these derived metrics (no raw content): "
+                "Write a concise newsletter headline and one-sentence dek for a weekly "
+                "trend report on founder/indie-hacker communities (Hacker News, Reddit). "
+                "Do not name a specific platform as the data source. "
+                "Use ONLY these derived metrics (no raw content): "
                 f"entity={lead_name}, weekly mention momentum={momentum_pct}%. "
                 'Return JSON only: {"headline": "...", "dek": "..."}'
             )

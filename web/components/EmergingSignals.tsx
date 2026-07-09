@@ -25,6 +25,9 @@ export default function EmergingSignals({
 }: {
   emerging: EmergingSignal[];
 }) {
+  // Real emerging signals ship in Phase 3; until then hide the section rather
+  // than render an empty grid.
+  if (emerging.length === 0) return null;
   return (
     <section className="blk">
       <div className="sechead rv">

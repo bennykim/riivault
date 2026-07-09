@@ -10,7 +10,9 @@ is purged. Only de-identified aggregates are retained.
 ## Sources
 
 - **Hacker News** — public Algolia API, no key required
-- **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval)
+- **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval).
+  Needed for the richest "why users switch / what hurts" feedback — HN skews
+  toward technical early-adopter discussion, not product feedback.
 
 ## Layout
 

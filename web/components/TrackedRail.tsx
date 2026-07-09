@@ -8,7 +8,8 @@ export default function TrackedRail({ tracked }: { tracked: TrackedEntity[] }) {
       <h3>Tracked entities</h3>
       <div className="track">
         {tracked.map((t) => {
-          const up = t.change_pct >= 0;
+          // change_pct is null when the prior 7-day window had no mentions.
+          const up = t.change_pct != null && t.change_pct >= 0;
           return (
             <div className="row" key={t.entity_id}>
               <div className="name">
@@ -23,7 +24,7 @@ export default function TrackedRail({ tracked }: { tracked: TrackedEntity[] }) {
                 />
               </svg>
               <div className={`chg ${up ? "up" : "down"} tnum`}>
-                {pctLabel(t.change_pct)}
+                {t.change_pct != null ? pctLabel(t.change_pct) : "—"}
               </div>
             </div>
           );

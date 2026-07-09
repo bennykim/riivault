@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,17 @@ class Settings(BaseSettings):
     hn_rpm: int = 60
     hn_hits_per_page: int = 50
     hn_max_pages_per_term: int = 2
+
+    # --- GitHub (token optional: 60 req/hr without, 5000 req/hr with) ---
+    # GitHub Actions forbids secrets starting with GITHUB_, so the canonical
+    # env var is GH_API_TOKEN; GITHUB_TOKEN is accepted for local .env parity.
+    gh_api_token: str = Field(
+        "", validation_alias=AliasChoices("GH_API_TOKEN", "GITHUB_TOKEN")
+    )
+    gh_enabled: bool = True
+    gh_rpm: int = 30
+    gh_per_page: int = 100
+    gh_max_pages_per_repo: int = 3
 
     # --- Collection targets (comma separated) ---
     riivault_subreddits: str = (

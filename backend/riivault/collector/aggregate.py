@@ -370,16 +370,157 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
     return summary
 
 
+async def run_aggregate_gh(settings: Settings | None = None) -> dict:
+    """Idempotent daily aggregation of ``raw_gh_issue`` into the derived tables.
+
+    Unlike the discourse sources there is no text matching: every issue/comment
+    belongs to the entity whose ``metadata->>'repo'`` owns the repository, so
+    the mapping is exact. The repo name is stored in the ``subreddit`` dimension
+    (plus the '' overall row) for per-repo breakdowns. Issues are *product
+    feedback*, so every matched row is a VoC candidate (ranked by comment
+    count; permalink = issue/comment html_url).
+    """
+    settings = settings or get_settings()
+    async with pool_context(settings) as pool:
+        async with pool.acquire() as conn:
+            source_id = await conn.fetchval(
+                "SELECT source_id FROM source WHERE name = 'github'"
+            )
+            repo_map = {
+                r["repo"]: r["entity_id"]
+                for r in await conn.fetch(
+                    "SELECT entity_id, metadata->>'repo' AS repo FROM entity"
+                    " WHERE metadata->>'repo' IS NOT NULL"
+                )
+            }
+            items = await conn.fetch(
+                """
+                SELECT gh_id, repo, kind, author_hash, title, body,
+                       num_comments, url, created_utc
+                  FROM raw_gh_issue
+                """
+            )
+
+            mention_events: list[dict[str, Any]] = []
+            sentiment_events: list[dict[str, Any]] = []
+            voc_candidates: list[dict[str, Any]] = []
+            affected_days: set[date] = set()
+
+            for row in items:
+                eid = repo_map.get(row["repo"])
+                if eid is None:
+                    continue
+                day = row["created_utc"].date()
+                affected_days.add(day)
+                text = f"{row['title'] or ''} {row['body'] or ''}".strip()
+                if not text:
+                    continue
+                compound = sentiment_compound(text)
+                mention_events.append(
+                    {
+                        "day": day, "entity_id": eid, "subreddit": row["repo"],
+                        "author_hash": row["author_hash"], "score": 0,
+                        "upvote_ratio": None,
+                        "num_comments": row["num_comments"] or 0,
+                    }
+                )
+                sentiment_events.append(
+                    {"day": day, "entity_id": eid, "compound": compound}
+                )
+                voc_candidates.append(
+                    {"day": day, "score": row["num_comments"] or 0, "text": text,
+                     "permalink": row["url"], "entity_ids": [eid]}
+                )
+
+            mention_rows = aggregate_mentions(mention_events)
+            sentiment_rows = aggregate_sentiments(sentiment_events)
+
+            async with conn.transaction():
+                for day in affected_days:
+                    await conn.execute(
+                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
+                        day, source_id,
+                    )
+                    await conn.execute(
+                        "DELETE FROM sentiment_daily WHERE day = $1 AND source_id = $2",
+                        day, source_id,
+                    )
+                if mention_rows:
+                    await conn.executemany(
+                        """
+                        INSERT INTO mention_daily
+                            (day, entity_id, source_id, subreddit, mention_count,
+                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                        """,
+                        [
+                            (m["day"], m["entity_id"], source_id, m["subreddit"],
+                             m["mention_count"], m["unique_authors"], m["score_sum"],
+                             m["upvote_ratio_avg"], m["comment_sum"])
+                            for m in mention_rows
+                        ],
+                    )
+                if sentiment_rows:
+                    await conn.executemany(
+                        """
+                        INSERT INTO sentiment_daily
+                            (day, entity_id, source_id, sentiment_mean, sentiment_std,
+                             pos_ratio, neg_ratio, neu_ratio, sample_size)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                        """,
+                        [
+                            (s["day"], s["entity_id"], source_id, s["sentiment_mean"],
+                             s["sentiment_std"], s["pos_ratio"], s["neg_ratio"],
+                             s["neu_ratio"], s["sample_size"])
+                            for s in sentiment_rows
+                        ],
+                    )
+
+            if settings.voc_enabled:
+                await _run_voc(conn, settings, voc_candidates)
+            else:
+                logger.info("VoC step skipped (no ANTHROPIC_API_KEY)")
+
+    summary = {
+        "days": len(affected_days),
+        "mention_rows": len(mention_rows),
+        "sentiment_rows": len(sentiment_rows),
+    }
+    logger.info("aggregate_gh complete: %s", summary)
+    return summary
+
+
 async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -> None:
     """Classify the top-scored candidates into the VoC ledger.
 
     Source-agnostic: each candidate carries its own ``permalink`` (Reddit
-    comments URL, HN item URL, ...), so any aggregation path can feed it.
+    comments URL, HN item URL, GitHub html_url, ...), so any aggregation path
+    can feed it. Each document is classified at most once, ever: aggregate
+    re-runs every 2h over the same 48h raw window, so without the
+    ``voc_processed`` marker the same documents would be re-counted (inflating
+    ``occurrences``) and re-worded by the LLM into near-duplicate ledger rows.
     """
     if not candidates:
         return
-    top = sorted(candidates, key=lambda c: c["score"], reverse=True)[:VOC_TOP_N]
+    permalinks = [c["permalink"] for c in candidates]
+    seen_rows = await conn.fetch(
+        "SELECT permalink FROM voc_processed WHERE permalink = ANY($1::text[])",
+        permalinks,
+    )
+    seen = {r["permalink"] for r in seen_rows}
+    fresh = [c for c in candidates if c["permalink"] not in seen]
+    if not fresh:
+        return
+    top = sorted(fresh, key=lambda c: c["score"], reverse=True)[:VOC_TOP_N]
     records = await classify_documents([c["text"][:1000] for c in top], settings)
+    if records is None:  # call failed/skipped — leave batch unmarked to retry
+        return
+    # The whole batch is now classified; docs the model omitted carry no VoC
+    # signal, which is just as final as a positive classification.
+    await conn.executemany(
+        "INSERT INTO voc_processed (permalink) VALUES ($1) ON CONFLICT DO NOTHING",
+        [(c["permalink"],) for c in top],
+    )
     if not records:
         return
 

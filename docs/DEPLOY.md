@@ -20,7 +20,8 @@ scale — the schema runs on plain Postgres + pgvector (verified).
 ## 2. Collector — GitHub Actions
 
 The workflow [`.github/workflows/collect.yml`](../.github/workflows/collect.yml)
-runs every 2h: `collect-once` (Reddit) → `collect-hn` → `aggregate` → `purge`.
+runs every 2h: `collect-once` (Reddit) → `collect-hn` → `collect-gh` →
+`collect-adoption` → `aggregate` → `purge`.
 
 Set repository secrets (**Settings → Secrets and variables → Actions**):
 
@@ -31,6 +32,7 @@ Set repository secrets (**Settings → Secrets and variables → Actions**):
 | `REDDIT_CLIENT_SECRET` | no* | |
 | `REDDIT_USER_AGENT` | no* | `web:riivault:v0.1 (by /u/yourname)` |
 | `ANTHROPIC_API_KEY` | no | Enables LLM VoC extraction; else VADER sentiment only |
+| `GH_API_TOKEN` | no | GitHub PAT → 5000 req/hr for Issues/adoption (60/hr without). Actions reserves the `GITHUB_` prefix, hence the name |
 
 \* Add the Reddit secrets once the Data API request is approved. Until then HN
 collects on its own and the Reddit step logs "skipped".

@@ -84,16 +84,36 @@ def _extract_json_array(raw: str | None) -> list[Any] | None:
             if isinstance(parsed, list):
                 return parsed
         except json.JSONDecodeError:
-            return None
+            pass
+    if start != -1:
+        return _salvage_truncated_array(text, start)
+    return None
+
+
+def _salvage_truncated_array(text: str, start: int) -> list[Any] | None:
+    """Recover the complete leading elements of an output-limit-truncated array."""
+    last = text.rfind("}")
+    while last > start:
+        try:
+            parsed = json.loads(text[start : last + 1] + "]")
+        except json.JSONDecodeError:
+            last = text.rfind("}", 0, last)
+            continue
+        return parsed if isinstance(parsed, list) else None
     return None
 
 
 async def classify_documents(
     documents: list[str], settings: Settings
-) -> list[dict[str, Any]]:
-    """Classify a batch of documents via Claude. Returns [] on skip or any failure."""
+) -> list[dict[str, Any]] | None:
+    """Classify a batch of documents via Claude.
+
+    Returns the parsed records ([] when the model found no VoC signal) or
+    ``None`` when the call itself failed/was skipped — callers use that to
+    retry the batch on a later run instead of marking it processed.
+    """
     if not settings.voc_enabled or not documents:
-        return []
+        return None
     numbered = "\n".join(f"[{i}] {doc}" for i, doc in enumerate(documents))
     try:
         from anthropic import AsyncAnthropic
@@ -101,7 +121,9 @@ async def classify_documents(
         client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         message = await client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=2048,
+            # ~100 docs can legitimately yield ~100 records; a small cap
+            # truncates the JSON array mid-element (GH issue batches hit this).
+            max_tokens=8192,
             messages=[{"role": "user", "content": _PROMPT + numbered}],
         )
         raw = "".join(
@@ -111,5 +133,5 @@ async def classify_documents(
         )
     except Exception as exc:  # noqa: BLE001 - degrade gracefully, never crash pipeline
         logger.warning("VoC classification failed, skipping batch: %s", exc)
-        return []
+        return None
     return parse_voc_response(raw)

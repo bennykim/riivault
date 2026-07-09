@@ -10,6 +10,10 @@ is purged. Only de-identified aggregates are retained.
 ## Sources
 
 - **Hacker News** — public Algolia API, no key required
+- **GitHub Issues** — real product feedback (bugs / feature requests) on mapped
+  repos; feeds the VoC ledger. Token optional (`GH_API_TOKEN`, 60/hr without)
+- **GitHub stars/releases + npm/PyPI downloads** — adoption time-series
+  ("what people use" vs "what people say"), no key required
 - **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval).
   Needed for the richest "why users switch / what hurts" feedback — HN skews
   toward technical early-adopter discussion, not product feedback.
@@ -40,9 +44,11 @@ cd ../web && npm install && npm run dev   # Next.js :3000
 Collect real data:
 
 ```bash
-uv run riivault collect-hn    # Hacker News (no key)
-uv run riivault collect-once  # Reddit (needs API keys)
-uv run riivault aggregate     # recompute derived time-series (all sources)
+uv run riivault collect-hn        # Hacker News (no key)
+uv run riivault collect-gh        # GitHub Issues on mapped repos
+uv run riivault collect-adoption  # stars / releases / npm / PyPI downloads
+uv run riivault collect-once      # Reddit (needs API keys)
+uv run riivault aggregate         # recompute derived time-series (all sources)
 ```
 
 ## Compliance (Reddit Responsible Builder Policy)

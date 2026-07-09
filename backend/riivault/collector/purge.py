@@ -42,6 +42,9 @@ async def run_purge(settings: Settings | None = None) -> dict:
             expired_com = _rowcount(
                 await conn.execute("DELETE FROM raw_comment WHERE expires_at < now()")
             )
+            expired_gh = _rowcount(
+                await conn.execute("DELETE FROM raw_gh_issue WHERE expires_at < now()")
+            )
 
             # (2) deletion detection among still-present rows.
             deleted_subs = await conn.fetch(
@@ -69,6 +72,7 @@ async def run_purge(settings: Settings | None = None) -> dict:
     summary = {
         "expired_submissions": expired_sub,
         "expired_comments": expired_com,
+        "expired_gh_issues": expired_gh,
         "deleted_purged": purged,
         "refs_invalidated": invalidated,
     }

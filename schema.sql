@@ -62,6 +62,23 @@ CREATE TABLE IF NOT EXISTS raw_hn_item (         -- Hacker News 원문 임시 �
 );
 CREATE INDEX IF NOT EXISTS idx_raw_hn_expires ON raw_hn_item (expires_at);
 
+CREATE TABLE IF NOT EXISTS raw_gh_issue (        -- GitHub 이슈/코멘트 원문 임시 계층 (≤48h TTL)
+    gh_id          TEXT PRIMARY KEY,            -- "{repo}#{number}" | "{repo}#c{comment_id}"
+    repo           TEXT NOT NULL,               -- owner/name
+    kind           TEXT NOT NULL,               -- issue|comment
+    number         INTEGER,                     -- 이슈 번호 (코멘트는 소속 이슈 번호)
+    author_hash    TEXT,                        -- 해시(비식별). 원문 author 미보관
+    title          TEXT,
+    body           TEXT,
+    state          TEXT,                        -- open|closed (코멘트는 NULL)
+    num_comments   INTEGER,
+    url            TEXT,                        -- html_url (example_ref용 링크만)
+    created_utc    TIMESTAMPTZ NOT NULL,
+    fetched_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at     TIMESTAMPTZ NOT NULL DEFAULT now() + interval '48 hours'  -- 배치 파기
+);
+CREATE INDEX IF NOT EXISTS idx_raw_gh_expires ON raw_gh_issue (expires_at);
+
 -- =========================================================
 -- 2) 엔티티 & 소스 (마스터)
 -- =========================================================
@@ -80,7 +97,8 @@ CREATE TABLE IF NOT EXISTS source (
     name           TEXT NOT NULL UNIQUE          -- reddit|hackernews|github|producthunt|google_trends
 );
 INSERT INTO source (name) VALUES
-    ('reddit'), ('hackernews'), ('github'), ('producthunt'), ('google_trends')
+    ('reddit'), ('hackernews'), ('github'), ('producthunt'), ('google_trends'),
+    ('npm'), ('pypi')
     ON CONFLICT (name) DO NOTHING;
 
 -- =========================================================
@@ -99,6 +117,16 @@ CREATE TABLE IF NOT EXISTS mention_daily (
     PRIMARY KEY (day, entity_id, source_id, subreddit)
 );
 CREATE INDEX IF NOT EXISTS idx_mention_daily_day ON mention_daily (day);
+
+CREATE TABLE IF NOT EXISTS adoption_daily (      -- 채택량 시계열 ("쓰는 것": stars/다운로드)
+    day            DATE NOT NULL,
+    entity_id      BIGINT NOT NULL REFERENCES entity(entity_id),
+    source_id      SMALLINT NOT NULL REFERENCES source(source_id),
+    metric         TEXT NOT NULL,               -- stars_total|releases|downloads
+    value          DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (day, entity_id, source_id, metric)
+);
+CREATE INDEX IF NOT EXISTS idx_adoption_daily_day ON adoption_daily (day);
 
 CREATE TABLE IF NOT EXISTS sentiment_daily (
     day            DATE NOT NULL,
@@ -141,6 +169,11 @@ CREATE TABLE IF NOT EXISTS feature_request (
 CREATE INDEX IF NOT EXISTS idx_fr_entity_kind ON feature_request (entity_id, kind, last_seen);
 -- 임베딩 근접검색 인덱스(대략적) — 데이터 축적 후 생성 권장
 -- CREATE INDEX ON feature_request USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+CREATE TABLE IF NOT EXISTS voc_processed (       -- VoC 분류 완료 문서 마커 (재분류·중복계수 방지)
+    permalink      TEXT PRIMARY KEY,
+    processed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS emerging_signal (     -- 조기신호 검증 이력(모델 학습 라벨)
     signal_id      BIGSERIAL PRIMARY KEY,

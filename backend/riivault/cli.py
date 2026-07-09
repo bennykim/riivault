@@ -21,6 +21,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("collect-once", help="Run one incremental Reddit collection pass")
     sub.add_parser("collect-hn", help="Run one incremental Hacker News collection pass")
+    sub.add_parser("collect-gh", help="Run one incremental GitHub Issues collection pass")
+    sub.add_parser("collect-adoption", help="Collect adoption metrics (stars/releases/downloads)")
     sub.add_parser("aggregate", help="Recompute derived aggregates from raw_* (idempotent)")
     sub.add_parser("purge", help="Purge expired/deleted raw content (compliance)")
     sub.add_parser("publish-issue", help="Publish/refresh this week's issue")
@@ -46,11 +48,24 @@ def main(argv: list[str] | None = None) -> int:
         from .collector.hackernews import collect_once_hn
 
         asyncio.run(collect_once_hn(settings))
+    elif args.command == "collect-gh":
+        from .collector.github import collect_once_gh
+
+        asyncio.run(collect_once_gh(settings))
+    elif args.command == "collect-adoption":
+        from .collector.adoption import collect_once_adoption
+
+        asyncio.run(collect_once_adoption(settings))
     elif args.command == "aggregate":
-        from .collector.aggregate import run_aggregate, run_aggregate_hn
+        from .collector.aggregate import (
+            run_aggregate,
+            run_aggregate_gh,
+            run_aggregate_hn,
+        )
 
         asyncio.run(run_aggregate(settings))
         asyncio.run(run_aggregate_hn(settings))
+        asyncio.run(run_aggregate_gh(settings))
     elif args.command == "purge":
         from .collector.purge import run_purge
 

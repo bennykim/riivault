@@ -57,3 +57,20 @@ def test_wrapped_results_object():
 def test_garbage_returns_empty():
     assert parse_voc_response("not json at all") == []
     assert parse_voc_response("") == []
+
+
+def test_truncated_array_salvages_complete_elements():
+    # Simulates an output-limit truncation mid-element: the first two records
+    # are complete, the third is cut off and must be dropped.
+    raw = (
+        '[{"index": 0, "kind": "bug", "normalized_text": "Database name error on start"},'
+        ' {"index": 1, "kind": "pain_point", "normalized_text": "Menu invisible in Brave"},'
+        ' {"index": 2, "kind": "feature_re'
+    )
+    records = parse_voc_response(raw)
+    assert [r["index"] for r in records] == [0, 1]
+    assert records[0]["kind"] == "bug"
+
+
+def test_truncated_with_no_complete_element_returns_empty():
+    assert parse_voc_response('[{"index": 0, "kind": "bu') == []

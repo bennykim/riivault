@@ -1,5 +1,7 @@
+import { Badge } from "@astryxdesign/core/Badge";
 import type { IssueData } from "@/lib/types";
 import { dottedDate } from "@/lib/format";
+import MastheadNav from "@/components/MastheadNav";
 
 export default function Masthead({ issue }: { issue: IssueData }) {
   return (
@@ -16,9 +18,7 @@ export default function Masthead({ issue }: { issue: IssueData }) {
           </div>
         </div>
         <div className="issue rv in s1">
-          <span className="pill">
-            <span className="live"></span>Live index
-          </span>
+          <Badge variant="success" label="Live index" />
           <br />
           <b>Issue {issue.issue_no}</b> · {dottedDate(issue.week_end)}
           <br />
@@ -26,16 +26,7 @@ export default function Masthead({ issue }: { issue: IssueData }) {
         </div>
       </div>
       <div className="rule"></div>
-      <nav className="strip">
-        <a href="#" className="active">
-          This Week
-        </a>
-        <a href="#">Pain Points</a>
-        <a href="#">Signals</a>
-        <a href="#">Tracked</a>
-        <a href="#">Communities</a>
-        <a href="#">Archive</a>
-      </nav>
+      <MastheadNav />
     </header>
   );
 }

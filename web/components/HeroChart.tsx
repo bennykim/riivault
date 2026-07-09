@@ -31,8 +31,8 @@ export default function HeroChart({ lead }: { lead: Lead }) {
       >
         <defs>
           <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#D24E1F" stopOpacity="0.20" />
-            <stop offset="1" stopColor="#D24E1F" stopOpacity="0" />
+            <stop offset="0" stopColor="var(--ember)" stopOpacity="0.20" />
+            <stop offset="1" stopColor="var(--ember)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <line x1="20" y1="50" x2="500" y2="50" stroke="var(--grid)" />
@@ -45,7 +45,7 @@ export default function HeroChart({ lead }: { lead: Lead }) {
           id="heroLine"
           d={d}
           fill="none"
-          stroke="#D24E1F"
+          stroke="var(--ember)"
           strokeWidth="2.2"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -56,8 +56,8 @@ export default function HeroChart({ lead }: { lead: Lead }) {
           cx={lastX}
           cy={lastY}
           r="4.5"
-          fill="#D24E1F"
-          stroke="#FBFBF8"
+          fill="var(--ember)"
+          stroke="var(--card)"
           strokeWidth="2"
         />
         <text className="axis" x="20" y="226">

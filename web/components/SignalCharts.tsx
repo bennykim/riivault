@@ -1,3 +1,4 @@
+import { Card } from "@astryxdesign/core/Card";
 import type { IssueData, Migration, SentimentFocus } from "@/lib/types";
 import { linePath } from "@/lib/chart";
 import { axisTicks, signedDecimal, vars } from "@/lib/format";
@@ -16,7 +17,7 @@ function SentimentPanel({ sentiment }: { sentiment: SentimentFocus }) {
   const [t0, t1, t2] = axisTicks(sentiment.series);
 
   return (
-    <div className="panel rv" id="sentCard">
+    <Card className="panel rv" id="sentCard">
       <div className="ph">
         <span className="t">Sentiment curve</span>
         <span className="s">{sentiment.label}</span>
@@ -43,7 +44,7 @@ function SentimentPanel({ sentiment }: { sentiment: SentimentFocus }) {
           id="sentLine"
           d={d}
           fill="none"
-          stroke="#4E63A6"
+          stroke="var(--neg)"
           strokeWidth="2.2"
           strokeLinejoin="round"
           style={vars({ "--len": len })}
@@ -53,8 +54,8 @@ function SentimentPanel({ sentiment }: { sentiment: SentimentFocus }) {
           cx={lastX}
           cy={lastY}
           r="4.5"
-          fill="#4E63A6"
-          stroke="#FBFBF8"
+          fill="var(--neg)"
+          stroke="var(--card)"
           strokeWidth="2"
         />
         <text className="axis" x="20" y="196">
@@ -69,14 +70,14 @@ function SentimentPanel({ sentiment }: { sentiment: SentimentFocus }) {
       </svg>
       <div className="legend">
         <span>
-          <i style={{ background: "#4E63A6" }}></i>net sentiment
+          <i style={{ background: "var(--neg)" }}></i>net sentiment
         </span>
         <span>
           {sentiment.current != null ? signedDecimal(sentiment.current) : "—"}{" "}
           &amp; {sentiment.trend}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -84,7 +85,7 @@ function MigrationPanel({ migration }: { migration: Migration }) {
   const maxShare = Math.max(...migration.destinations.map((x) => x.share), 0.0001);
 
   return (
-    <div className="panel rv">
+    <Card className="panel rv">
       <div className="ph">
         <span className="t">Community migration</span>
         <span className="s">{migration.title}</span>
@@ -116,7 +117,7 @@ function MigrationPanel({ migration }: { migration: Migration }) {
         </span>
         <span>n = {migration.n} switch-intent threads</span>
       </div>
-    </div>
+    </Card>
   );
 }
 

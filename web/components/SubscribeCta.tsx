@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { TextInput } from "@astryxdesign/core/TextInput";
 
 const INITIAL = "Free · 3,400+ founders & PMs · no raw content, ever.";
 const SUCCESS = "Subscribed — first issue lands next Tuesday. ✓";
@@ -38,7 +41,7 @@ export default function SubscribeCta() {
   };
 
   return (
-    <div className="cta rv in s4">
+    <Card className="cta rv in s4">
       <div className="k">The Tuesday Signal</div>
       <h4>Get the Reddit signal, read for you.</h4>
       <p>
@@ -46,17 +49,18 @@ export default function SubscribeCta() {
         and emerging bets — synthesized, not scraped.
       </p>
       <form className="form" onSubmit={onSubmit}>
-        <input
+        <TextInput
           type="email"
+          label="Email address"
+          isLabelHidden
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(value) => setEmail(value)}
           placeholder="you@maker.co"
-          aria-label="Email address"
-          required
+          htmlName="email"
         />
-        <button type="submit">{buttonLabel}</button>
+        <Button type="submit" variant="primary" label={buttonLabel} />
       </form>
       <p className="fine">{message}</p>
-    </div>
+    </Card>
   );
 }

@@ -1,6 +1,5 @@
 import { getIssue } from "@/lib/api";
 import { sampleIssue } from "@/lib/sample";
-import FieldCanvas from "@/components/fx/FieldCanvas";
 import Reveal from "@/components/fx/Reveal";
 import Masthead from "@/components/Masthead";
 import Lead from "@/components/Lead";
@@ -20,7 +19,6 @@ export default async function Page() {
 
   return (
     <>
-      <FieldCanvas />
       <Reveal />
       <div className="wrap">
         <Masthead issue={issue} />

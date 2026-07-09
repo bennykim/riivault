@@ -1,18 +1,21 @@
+import { Badge } from "@astryxdesign/core/Badge";
+import type { BadgeVariant } from "@astryxdesign/core/Badge";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import type { IssueData, PainKind } from "@/lib/types";
-import { pctLabel, vars } from "@/lib/format";
+import { pctLabel } from "@/lib/format";
 
-function tagFor(kind: PainKind): { cls: string; label: string } {
+function tagFor(kind: PainKind): { variant: BadgeVariant; label: string } {
   switch (kind) {
     case "feature_request":
-      return { cls: "feat", label: "Feature request" };
+      return { variant: "success", label: "Feature request" };
     case "switch_intent":
-      return { cls: "switch", label: "Switch intent" };
+      return { variant: "warning", label: "Switch intent" };
     case "praise":
-      return { cls: "feat", label: "Praise" };
+      return { variant: "success", label: "Praise" };
     case "bug":
     case "pain_point":
     default:
-      return { cls: "pain", label: "Pain point" };
+      return { variant: "info", label: "Pain point" };
   }
 }
 
@@ -31,7 +34,6 @@ export default function PainPointsFeed({ issue }: { issue: IssueData }) {
       <div className="feed">
         {points.map((p) => {
           const tag = tagFor(p.kind);
-          const width = `${Math.round((p.momentum_pct / maxMomentum) * 100)}%`;
           return (
             <div className="fr rv" key={p.fr_id}>
               <div className="rk">{String(p.rank).padStart(2, "0")}</div>
@@ -39,13 +41,21 @@ export default function PainPointsFeed({ issue }: { issue: IssueData }) {
                 {p.text}
                 <em>normalized · {p.occurrences} distinct threads</em>
               </div>
-              <span className={`tag ${tag.cls}`}>{tag.label}</span>
+              <span className="tagcell">
+                <Badge variant={tag.variant} label={tag.label} />
+              </span>
               <div className="occ">
                 <b>{p.occurrences}</b> mentions
               </div>
               <div className="mom">
-                <span className="track2">
-                  <i style={vars({ "--w": width })}></i>
+                <span className="mombar">
+                  <ProgressBar
+                    value={p.momentum_pct}
+                    max={maxMomentum}
+                    label="Momentum"
+                    isLabelHidden
+                    variant="accent"
+                  />
                 </span>
                 <span className="pct tnum">{pctLabel(p.momentum_pct)}</span>
               </div>

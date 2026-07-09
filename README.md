@@ -42,7 +42,7 @@ uv sync
 uv run riivault seed-demo     # demo derived data + weekly issue
 uv run riivault api           # FastAPI :8000
 
-cd ../web && npm install && npm run dev   # Next.js :3000
+cd ../web && pnpm install && pnpm dev     # Next.js :3000
 ```
 
 Collect real data:

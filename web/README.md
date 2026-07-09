@@ -1,18 +1,22 @@
 # riivault — web
 
-Next.js 15 (App Router) + React 19 + TypeScript (strict) frontend for riivault.
-A pixel-faithful port of `design/index.html`, rendered entirely from the
-`GET /api/v1/issue/current` response (see `docs/CONTRACT.md`). No Tailwind — the
-design CSS is ported verbatim into `app/globals.css`. No external CDN / font /
-chart library; charts are generated from data by `lib/chart.ts`.
+Next.js 15 (App Router) + React 19 + TypeScript (strict) frontend for riivault,
+rendered entirely from the `GET /api/v1/issue/current` response (see
+`docs/CONTRACT.md`). UI is built on the [Astryx](https://astryx.atmeta.com/)
+design system (`@astryxdesign/core` + `theme-neutral`, versions pinned — beta):
+light/dark follows the OS via the theme's `light-dark()` tokens, and legacy CSS
+variables in `app/globals.css` are aliased to Astryx tokens so the hand-rolled
+SVG charts (`lib/chart.ts`, no chart library) track the active mode.
 
 ## Commands
 
+Uses pnpm (see `packageManager` in package.json).
+
 ```bash
-npm install       # install dependencies
-npm run dev       # dev server on http://localhost:3000
-npm run build     # production build (TypeScript type-checking enabled)
-npm run start     # serve the production build
+pnpm install       # install dependencies
+pnpm dev           # dev server on http://localhost:3000
+pnpm build         # production build (TypeScript type-checking enabled)
+pnpm start         # serve the production build
 ```
 
 ## Environment variables

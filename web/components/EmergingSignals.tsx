@@ -1,22 +1,25 @@
+import { Badge } from "@astryxdesign/core/Badge";
+import type { BadgeVariant } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import type { ProgressBarVariant } from "@astryxdesign/core/ProgressBar";
 import type { EmergingSignal, SignalType } from "@/lib/types";
-import { vars } from "@/lib/format";
-import TiltCard from "@/components/fx/TiltCard";
 
 function metaFor(type: SignalType): {
-  cls: string;
+  badge: BadgeVariant;
+  meter: ProgressBarVariant;
   label: string;
-  color: string;
 } {
   switch (type) {
     case "new_topic":
-      return { cls: "newtopic", label: "✦ New topic", color: "var(--pos)" };
+      return { badge: "success", meter: "success", label: "✦ New topic" };
     case "sentiment_flip":
-      return { cls: "flip", label: "▼ Sentiment flip", color: "var(--neg)" };
+      return { badge: "info", meter: "warning", label: "▼ Sentiment flip" };
     case "migration":
-      return { cls: "spike", label: "◆ Migration", color: "var(--ember)" };
+      return { badge: "warning", meter: "accent", label: "◆ Migration" };
     case "spike":
     default:
-      return { cls: "spike", label: "◆ Volume spike", color: "var(--ember)" };
+      return { badge: "warning", meter: "accent", label: "◆ Volume spike" };
   }
 }
 
@@ -37,20 +40,25 @@ export default function EmergingSignals({
       <div className="cards">
         {emerging.map((signal) => {
           const meta = metaFor(signal.signal_type);
-          const width = `${Math.round(signal.strength * 100)}%`;
           return (
-            <TiltCard className={`ecard ${meta.cls} rv`} key={signal.signal_id}>
-              <span className="type">{meta.label}</span>
+            <Card className="ecard rv" key={signal.signal_id}>
+              <span>
+                <Badge variant={meta.badge} label={meta.label} />
+              </span>
               <div className="ent">{signal.entity}</div>
               <p className="desc">{signal.description}</p>
-              <div className="meter">
-                <i style={vars({ "--w": width, background: meta.color })}></i>
-              </div>
+              <ProgressBar
+                value={signal.strength}
+                max={1}
+                label="Signal strength"
+                isLabelHidden
+                variant={meta.meter}
+              />
               <div className="foot">
                 <span>Strength {signal.strength.toFixed(2)}</span>
                 <span>{signal.detected_label}</span>
               </div>
-            </TiltCard>
+            </Card>
           );
         })}
       </div>

@@ -14,6 +14,10 @@ is purged. Only de-identified aggregates are retained.
   repos; feeds the VoC ledger. Token optional (`GH_API_TOKEN`, 60/hr without)
 - **GitHub stars/releases + npm/PyPI downloads** — adoption time-series
   ("what people use" vs "what people say"), no key required
+- **Product Hunt** — new launches in niche topics; ecosystem mentions of
+  tracked entities in launch copy (needs `PRODUCTHUNT_TOKEN`)
+- **Stack Exchange** — daily new-question counts per mapped tag
+  (technical-interest proxy), no key required
 - **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval).
   Needed for the richest "why users switch / what hurts" feedback — HN skews
   toward technical early-adopter discussion, not product feedback.
@@ -46,7 +50,8 @@ Collect real data:
 ```bash
 uv run riivault collect-hn        # Hacker News (no key)
 uv run riivault collect-gh        # GitHub Issues on mapped repos
-uv run riivault collect-adoption  # stars / releases / npm / PyPI downloads
+uv run riivault collect-ph        # Product Hunt launches (needs token)
+uv run riivault collect-adoption  # stars / releases / downloads / SE questions
 uv run riivault collect-once      # Reddit (needs API keys)
 uv run riivault aggregate         # recompute derived time-series (all sources)
 ```

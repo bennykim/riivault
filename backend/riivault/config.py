@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     gh_per_page: int = 100
     gh_max_pages_per_repo: int = 3
 
+    # --- Product Hunt (developer token; GraphQL v2) ---
+    producthunt_token: str = ""
+    ph_enabled: bool = True
+    ph_rpm: int = 10
+    ph_first: int = 20
+    ph_max_pages_per_topic: int = 2
+    ph_topics: str = "artificial-intelligence,saas,developer-tools,productivity,no-code"
+
     # --- Collection targets (comma separated) ---
     riivault_subreddits: str = (
         "SaaS,Entrepreneur,startups,indiehackers,webdev,nocode,"
@@ -63,6 +71,10 @@ class Settings(BaseSettings):
     @property
     def subreddits(self) -> list[str]:
         return [s.strip() for s in self.riivault_subreddits.split(",") if s.strip()]
+
+    @property
+    def ph_topic_list(self) -> list[str]:
+        return [t.strip() for t in self.ph_topics.split(",") if t.strip()]
 
     @property
     def voc_enabled(self) -> bool:

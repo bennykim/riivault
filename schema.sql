@@ -62,6 +62,22 @@ CREATE TABLE IF NOT EXISTS raw_hn_item (         -- Hacker News 원문 임시 �
 );
 CREATE INDEX IF NOT EXISTS idx_raw_hn_expires ON raw_hn_item (expires_at);
 
+CREATE TABLE IF NOT EXISTS raw_ph_post (         -- Product Hunt 런치 포스트 임시 계층 (≤48h TTL)
+    ph_id          TEXT PRIMARY KEY,             -- GraphQL post id
+    topic          TEXT NOT NULL,                -- 수집 토픽 slug (중복 등장 시 첫 토픽)
+    author_hash    TEXT,                         -- 해시(비식별). 원문 maker 미보관
+    name           TEXT,
+    tagline        TEXT,
+    description    TEXT,
+    url            TEXT,
+    votes          INTEGER,
+    num_comments   INTEGER,
+    created_utc    TIMESTAMPTZ NOT NULL,
+    fetched_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at     TIMESTAMPTZ NOT NULL DEFAULT now() + interval '48 hours'  -- 배치 파기
+);
+CREATE INDEX IF NOT EXISTS idx_raw_ph_expires ON raw_ph_post (expires_at);
+
 CREATE TABLE IF NOT EXISTS raw_gh_issue (        -- GitHub 이슈/코멘트 원문 임시 계층 (≤48h TTL)
     gh_id          TEXT PRIMARY KEY,            -- "{repo}#{number}" | "{repo}#c{comment_id}"
     repo           TEXT NOT NULL,               -- owner/name
@@ -98,7 +114,7 @@ CREATE TABLE IF NOT EXISTS source (
 );
 INSERT INTO source (name) VALUES
     ('reddit'), ('hackernews'), ('github'), ('producthunt'), ('google_trends'),
-    ('npm'), ('pypi')
+    ('npm'), ('pypi'), ('stackexchange')
     ON CONFLICT (name) DO NOTHING;
 
 -- =========================================================

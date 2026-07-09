@@ -1,6 +1,6 @@
 from datetime import date
 
-from riivault.collector.adoption import npm_rows, pypi_rows, release_rows
+from riivault.collector.adoption import npm_rows, pypi_rows, release_rows, se_rows
 
 TODAY = date(2026, 7, 9)
 
@@ -57,3 +57,25 @@ def test_release_rows_respects_window():
         {"published_at": "2026-07-01T00:00:00Z"},
     ]
     assert release_rows(payload, TODAY, window_days=90) == [(date(2026, 7, 1), 1.0)]
+
+
+def test_se_rows_buckets_epochs_by_utc_day():
+    items = [
+        {"creation_date": 1783490400},  # 2026-07-08T06:00Z
+        {"creation_date": 1783533600},  # 2026-07-08T18:00Z
+        {"creation_date": 1783566000},  # 2026-07-09T03:00Z
+        {},                             # missing epoch -> skipped
+    ]
+    assert se_rows(items, TODAY) == [
+        (date(2026, 7, 8), 2.0),
+        (date(2026, 7, 9), 1.0),
+    ]
+
+
+def test_se_rows_truncated_drops_partial_oldest_day():
+    items = [
+        {"creation_date": 1783490400},  # 2026-07-08 (partial: page cap hit)
+        {"creation_date": 1783566000},  # 2026-07-09
+    ]
+    assert se_rows(items, TODAY, truncated=True) == [(date(2026, 7, 9), 1.0)]
+    assert se_rows([], TODAY, truncated=True) == []

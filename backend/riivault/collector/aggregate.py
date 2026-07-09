@@ -490,6 +490,82 @@ async def run_aggregate_gh(settings: Settings | None = None) -> dict:
     return summary
 
 
+async def run_aggregate_ph(settings: Settings | None = None) -> dict:
+    """Idempotent daily aggregation of ``raw_ph_post`` into ``mention_daily``.
+
+    Launch copy (name + tagline + description) is matched against tracked
+    entities — "built on Supabase" style ecosystem mentions. The collection
+    topic rides in the ``subreddit`` dimension. Mentions only: launch copy is
+    maker marketing, so running VADER over it (or feeding it to VoC) would
+    pollute the user-sentiment and feedback ledgers with self-promotion.
+    """
+    settings = settings or get_settings()
+    async with pool_context(settings) as pool:
+        async with pool.acquire() as conn:
+            source_id = await conn.fetchval(
+                "SELECT source_id FROM source WHERE name = 'producthunt'"
+            )
+            matcher = await load_matcher(conn)
+            items = await conn.fetch(
+                """
+                SELECT ph_id, topic, author_hash, name, tagline, description,
+                       votes, num_comments, created_utc
+                  FROM raw_ph_post
+                """
+            )
+
+            mention_events: list[dict[str, Any]] = []
+            affected_days: set[date] = set()
+
+            for row in items:
+                day = row["created_utc"].date()
+                affected_days.add(day)
+                text = " ".join(
+                    part for part in (row["name"], row["tagline"], row["description"])
+                    if part
+                ).strip()
+                entity_ids = matcher.match(text)
+                if not entity_ids:
+                    continue
+                for eid in entity_ids:
+                    mention_events.append(
+                        {
+                            "day": day, "entity_id": eid, "subreddit": row["topic"],
+                            "author_hash": row["author_hash"], "score": row["votes"],
+                            "upvote_ratio": None,
+                            "num_comments": row["num_comments"] or 0,
+                        }
+                    )
+
+            mention_rows = aggregate_mentions(mention_events)
+
+            async with conn.transaction():
+                for day in affected_days:
+                    await conn.execute(
+                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
+                        day, source_id,
+                    )
+                if mention_rows:
+                    await conn.executemany(
+                        """
+                        INSERT INTO mention_daily
+                            (day, entity_id, source_id, subreddit, mention_count,
+                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                        """,
+                        [
+                            (m["day"], m["entity_id"], source_id, m["subreddit"],
+                             m["mention_count"], m["unique_authors"], m["score_sum"],
+                             m["upvote_ratio_avg"], m["comment_sum"])
+                            for m in mention_rows
+                        ],
+                    )
+
+    summary = {"days": len(affected_days), "mention_rows": len(mention_rows)}
+    logger.info("aggregate_ph complete: %s", summary)
+    return summary
+
+
 async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -> None:
     """Classify the top-scored candidates into the VoC ledger.
 

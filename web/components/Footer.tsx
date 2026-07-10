@@ -1,28 +1,22 @@
-import { Badge } from "@astryxdesign/core/Badge";
-import { Card } from "@astryxdesign/core/Card";
-
 export default function Footer({ isSample }: { isSample: boolean }) {
   return (
-    <footer>
-      <Card className="compliance rv">
-        <Badge variant="neutral" label="Built to last" />
-        <p>
-          <b>
-            riivault publishes derived, aggregate insight — never raw or stored
-            Reddit content.
-          </b>{" "}
-          Individual posts live only in a &lt;48h processing buffer; deletions
-          are honored and the permanent asset is de-identified time-series.
-          Staying non-commercial keeps collection inside Reddit&rsquo;s free tier
-          — the exact trap that shut GummySearch down in Nov 2025.
-        </p>
-      </Card>
+    <footer className="span12">
+      <div className="foot sans">
+        <b>
+          riivault publishes derived, aggregate insight and never raw or stored
+          Reddit content.
+        </b>{" "}
+        Individual posts live only in a 48-hour processing buffer, and deletions
+        are honored. The permanent asset is de-identified time series. Staying
+        non-commercial keeps collection inside Reddit&rsquo;s free tier, the
+        exact trap that shut GummySearch down in November 2025.
+      </div>
       <div className="foot-meta">
-        <span>riivault · Reddit Signal Intelligence</span>
+        <span>RIIVAULT · REDDIT SIGNAL INTELLIGENCE</span>
         <span>
           {isSample
-            ? "Sample data — design preview · Astryx design system"
-            : "Live index — derived aggregates only, never raw content"}
+            ? "SAMPLE DATA · DESIGN PREVIEW · TERMINAL INTELLIGENCE"
+            : "LIVE INDEX · DERIVED AGGREGATES ONLY · NEVER RAW CONTENT"}
         </span>
       </div>
     </footer>

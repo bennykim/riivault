@@ -11,16 +11,16 @@ export const sampleIssue: IssueData = {
   niche: "SaaS",
   communities: 34,
   lead: {
-    eyebrow: "Lead signal · momentum +38%",
+    eyebrow: "Lead signal / momentum +38%",
     headline:
-      "The AI-wrapper honeymoon is ending — churn complaints tripled in six weeks",
-    dek: 'Across founder communities, the story flipped from "look what I shipped" to "why is everyone leaving." Threads about thin GPT wrappers now skew toward retention, pricing fatigue, and "this is just a prompt" — the first sustained negative turn riivault has logged for the category since tracking began.',
+      "The AI-wrapper honeymoon is over. Churn complaints tripled in six weeks.",
+    dek: 'Across founder communities the story flipped from "look what I shipped" to "why is everyone leaving." Threads about thin GPT wrappers now center on retention, pricing fatigue, and doubts that a prompt is a product. This is the first sustained negative turn riivault has logged for the category.',
     momentum_pct: 38.0,
     threads: 1240,
     comments: 8900,
     window_weeks: 12,
     subreddits: ["r/SaaS", "r/indiehackers", "r/microsaas"],
-    chart_title: 'Mention Index — "AI wrapper" churn',
+    chart_title: 'Mention index · "AI wrapper" churn',
     delta_label: "+40% w/w",
     delta_value: 168,
     series: [
@@ -89,7 +89,7 @@ export const sampleIssue: IssueData = {
       signal_type: "spike",
       entity: '"Local-first" SaaS',
       description:
-        "Mentions up 4.2× in three weeks across dev communities. Driven by data-ownership and offline anxiety, not a single launch.",
+        "Mentions rose 4.2× in three weeks across dev communities. Data-ownership and offline anxiety drive the curve, not any single launch.",
       strength: 0.86,
       detected_label: "Detected wk25",
     },
@@ -98,7 +98,7 @@ export const sampleIssue: IssueData = {
       signal_type: "new_topic",
       entity: 'Agent "handoff" UX',
       description:
-        "A vocabulary forming around multi-agent handoffs and trust boundaries — no incumbent owns the term yet. Green-field naming window.",
+        "A shared vocabulary is forming around multi-agent handoffs and trust boundaries. No incumbent owns the term yet, so the naming window is open.",
       strength: 0.71,
       detected_label: "Detected wk26",
     },
@@ -107,7 +107,7 @@ export const sampleIssue: IssueData = {
       signal_type: "sentiment_flip",
       entity: "No-code AI builders",
       description:
-        'Flipped from net-positive to net-negative as "vibe-coded" apps hit maintenance reality. Complaints center on debugging opacity.',
+        'Sentiment flipped from net-positive to net-negative as vibe-coded apps hit maintenance reality. Complaints center on debugging opacity.',
       strength: 0.64,
       detected_label: "Detected wk27",
     },

@@ -1,75 +1,72 @@
 import type { Lead } from "@/lib/types";
 import { linePath } from "@/lib/chart";
 import { axisTicks, vars } from "@/lib/format";
-import CountUp from "@/components/fx/CountUp";
 
 export default function HeroChart({ lead }: { lead: Lead }) {
   const values = lead.series.map((p) => p.value);
-  const { d, areaD, lastX, lastY, len } = linePath(values, {
-    w: 520,
-    h: 232,
-    padX: 20,
-    padTop: 30,
-    padBottom: 57,
-    baseline: 210,
+  const { d, areaD, lastX, lastY } = linePath(values, {
+    w: 820,
+    h: 300,
+    padX: 6,
+    padTop: 14,
+    padBottom: 24,
+    baseline: 276,
   });
   const [t0, t1, t2] = axisTicks(lead.series);
 
   return (
-    <figure className="herofig rv s4" id="heroChart">
-      <div className="figtop">
-        <span className="t">{lead.chart_title}</span>
-        <span className="v tnum">
-          ▲ <CountUp end={lead.delta_value} /> this wk ({lead.delta_label})
-        </span>
+    <section className="panel span8">
+      <div className="ph">
+        <span>{lead.chart_title}</span>
+        <b className="up">
+          ▲ {lead.delta_value} · {lead.delta_label}
+        </b>
       </div>
       <svg
         className="chart"
-        viewBox="0 0 520 232"
+        viewBox="0 0 820 300"
         role="img"
-        aria-label="Weekly mention index rising sharply over 12 weeks"
+        aria-label="Weekly mention index over the tracking window"
       >
-        <defs>
-          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--ember)" stopOpacity="0.20" />
-            <stop offset="1" stopColor="var(--ember)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1="20" y1="50" x2="500" y2="50" stroke="var(--grid)" />
-        <line x1="20" y1="90" x2="500" y2="90" stroke="var(--grid)" />
-        <line x1="20" y1="130" x2="500" y2="130" stroke="var(--grid)" />
-        <line x1="20" y1="170" x2="500" y2="170" stroke="var(--grid)" />
-        <path className="area-in" d={areaD} fill="url(#fill)" />
+        {[0, 1, 2, 3, 4].map((g) => {
+          const y = 14 + (g * (300 - 14 - 24)) / 4;
+          return <line key={g} x1="6" y1={y} x2="814" y2={y} stroke="var(--line)" />;
+        })}
+        <path d={areaD} fill="var(--primary)" opacity="0.09" />
         <path
-          className="draw"
-          id="heroLine"
           d={d}
           fill="none"
-          stroke="var(--ember)"
-          strokeWidth="2.2"
+          stroke="var(--primary)"
+          strokeWidth="2"
           strokeLinejoin="round"
           strokeLinecap="round"
-          style={vars({ "--len": len })}
         />
         <circle
-          className="dot-in"
           cx={lastX}
           cy={lastY}
-          r="4.5"
-          fill="var(--ember)"
-          stroke="var(--card)"
+          r="4"
+          fill="var(--primary)"
+          stroke="var(--panel)"
           strokeWidth="2"
         />
-        <text className="axis" x="20" y="226">
+        <text className="axis" x="6" y="295">
           {t0}
         </text>
-        <text className="axis" x="240" y="226" textAnchor="middle">
+        <text className="axis" x="410" y="295" textAnchor="middle">
           {t1}
         </text>
-        <text className="axis" x="500" y="226" textAnchor="end">
+        <text className="axis" x="814" y="295" textAnchor="end">
           {t2}
         </text>
       </svg>
-    </figure>
+      <div className="legend">
+        <span>
+          <i style={{ background: "var(--primary)" }}></i>mention index
+        </span>
+        <span>
+          {t0} .. {t2}
+        </span>
+      </div>
+    </section>
   );
 }

@@ -1,8 +1,12 @@
 import { getIssue } from "@/lib/api";
 import { sampleIssue } from "@/lib/sample";
-import Reveal from "@/components/fx/Reveal";
 import Masthead from "@/components/Masthead";
+import Ticker from "@/components/Ticker";
 import Lead from "@/components/Lead";
+import TrackedRail from "@/components/TrackedRail";
+import KpiCards from "@/components/KpiCards";
+import HeroChart from "@/components/HeroChart";
+import SubscribeCta from "@/components/SubscribeCta";
 import PainPointsFeed from "@/components/PainPointsFeed";
 import SignalCharts from "@/components/SignalCharts";
 import EmergingSignals from "@/components/EmergingSignals";
@@ -18,16 +22,20 @@ export default async function Page() {
   const isSample = live === null;
 
   return (
-    <>
-      <Reveal />
-      <div className="wrap">
-        <Masthead issue={issue} />
+    <div className="page">
+      <Masthead issue={issue} />
+      <Ticker issue={issue} />
+      <div className="grid">
         <Lead issue={issue} />
+        <TrackedRail tracked={issue.tracked} />
+        <KpiCards issue={issue} />
+        <HeroChart lead={issue.lead} />
+        <SubscribeCta />
         <PainPointsFeed issue={issue} />
         <SignalCharts issue={issue} />
         <EmergingSignals emerging={issue.emerging} />
         <Footer isSample={isSample} />
       </div>
-    </>
+    </div>
   );
 }

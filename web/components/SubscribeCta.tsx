@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@astryxdesign/core/Button";
-import { Card } from "@astryxdesign/core/Card";
-import { TextInput } from "@astryxdesign/core/TextInput";
 
-const INITIAL = "Free · 3,400+ founders & PMs · no raw content, ever.";
-const SUCCESS = "Subscribed — first issue lands next Tuesday. ✓";
-const INVALID = "Enter a valid email to get Tuesday’s signal.";
+const INITIAL = "FREE · 3,400+ FOUNDERS & PMS · NO RAW CONTENT";
+const SUCCESS = "SUBSCRIBED · FIRST ISSUE LANDS NEXT TUESDAY ✓";
+const INVALID = "ENTER A VALID EMAIL TO GET TUESDAY'S SIGNAL";
 
 export default function SubscribeCta() {
   const [email, setEmail] = useState("");
@@ -41,26 +38,27 @@ export default function SubscribeCta() {
   };
 
   return (
-    <Card className="cta rv in s4">
-      <div className="k">The Tuesday Signal</div>
-      <h4>Get the Reddit signal, read for you.</h4>
-      <p>
-        One email, every Tuesday. The week&rsquo;s rising pains, sentiment flips,
-        and emerging bets — synthesized, not scraped.
+    <section className="panel span4 sub-panel">
+      <div className="ph">
+        <span>The Tuesday Signal</span>
+      </div>
+      <h3 className="sans">Get the signal, already read for you.</h3>
+      <p className="sans">
+        One email every Tuesday: rising pain points, sentiment flips, and
+        emerging bets from 34 founder communities.
       </p>
-      <form className="form" onSubmit={onSubmit}>
-        <TextInput
+      <form className="sub-form" onSubmit={onSubmit}>
+        <input
           type="email"
-          label="Email address"
-          isLabelHidden
-          value={email}
-          onChange={(value) => setEmail(value)}
+          aria-label="Email address"
           placeholder="you@maker.co"
-          htmlName="email"
+          name="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
-        <Button type="submit" variant="primary" label={buttonLabel} />
+        <button type="submit">{buttonLabel}</button>
       </form>
-      <p className="fine">{message}</p>
-    </Card>
+      <p className="sub-fine">{message}</p>
+    </section>
   );
 }

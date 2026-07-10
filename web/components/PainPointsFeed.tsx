@@ -1,21 +1,18 @@
-import { Badge } from "@astryxdesign/core/Badge";
-import type { BadgeVariant } from "@astryxdesign/core/Badge";
-import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import type { IssueData, PainKind } from "@/lib/types";
 import { pctLabel } from "@/lib/format";
 
-function tagFor(kind: PainKind): { variant: BadgeVariant; label: string } {
+function tagFor(kind: PainKind): { cls: string; label: string } {
   switch (kind) {
     case "feature_request":
-      return { variant: "success", label: "Feature request" };
+      return { cls: "ok", label: "Feature request" };
     case "switch_intent":
-      return { variant: "warning", label: "Switch intent" };
+      return { cls: "warn", label: "Switch intent" };
     case "praise":
-      return { variant: "success", label: "Praise" };
+      return { cls: "ok", label: "Praise" };
     case "bug":
     case "pain_point":
     default:
-      return { variant: "info", label: "Pain point" };
+      return { cls: "", label: "Pain point" };
   }
 }
 
@@ -24,45 +21,51 @@ export default function PainPointsFeed({ issue }: { issue: IssueData }) {
   const maxMomentum = Math.max(...points.map((p) => p.momentum_pct), 1);
 
   return (
-    <section className="blk">
-      <div className="sechead rv">
-        <h2>Rising pain points</h2>
-        <span className="sub">
-          Ranked by momentum · last 7 days · {issue.niche} niche
-        </span>
+    <section className="panel span12">
+      <div className="ph">
+        <span>Rising pain points</span>
+        <b>
+          ranked by momentum · last 7d · {issue.niche} niche
+        </b>
       </div>
-      <div className="feed">
-        {points.map((p) => {
-          const tag = tagFor(p.kind);
-          return (
-            <div className="fr rv" key={p.fr_id}>
-              <div className="rk">{String(p.rank).padStart(2, "0")}</div>
-              <div className="txt">
-                {p.text}
-                <em>normalized · {p.occurrences} distinct threads</em>
-              </div>
-              <span className="tagcell">
-                <Badge variant={tag.variant} label={tag.label} />
-              </span>
-              <div className="occ">
-                <b>{p.occurrences}</b> mentions
-              </div>
-              <div className="mom">
-                <span className="mombar">
-                  <ProgressBar
-                    value={p.momentum_pct}
-                    max={maxMomentum}
-                    label="Momentum"
-                    isLabelHidden
-                    variant="accent"
-                  />
-                </span>
-                <span className="pct tnum">{pctLabel(p.momentum_pct)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <table className="ptab">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Pain point</th>
+            <th className="hide-sm">Kind</th>
+            <th className="r hide-sm">Mentions</th>
+            <th className="r">Momentum</th>
+          </tr>
+        </thead>
+        <tbody>
+          {points.map((p) => {
+            const tag = tagFor(p.kind);
+            const w = Math.round((p.momentum_pct / maxMomentum) * 100);
+            return (
+              <tr key={p.fr_id}>
+                <td className="rank">{String(p.rank).padStart(2, "0")}</td>
+                <td className="txt sans">{p.text}</td>
+                <td className="hide-sm">
+                  <span className={`kindtag ${tag.cls}`}>{tag.label}</span>
+                </td>
+                <td className="r hide-sm">{p.occurrences}</td>
+                <td className="r">
+                  <span className="mom">
+                    <span
+                      className="bar"
+                      style={{
+                        background: `linear-gradient(to right, var(--primary) ${w}%, var(--panel2) ${w}%)`,
+                      }}
+                    ></span>
+                    <span className="pv">{pctLabel(p.momentum_pct)}</span>
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </section>
   );
 }

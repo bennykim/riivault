@@ -1,83 +1,84 @@
-import { Card } from "@astryxdesign/core/Card";
 import type { IssueData, Migration, SentimentFocus } from "@/lib/types";
 import { linePath } from "@/lib/chart";
-import { axisTicks, signedDecimal, vars } from "@/lib/format";
+import { axisTicks, signedDecimal } from "@/lib/format";
 
 function SentimentPanel({ sentiment }: { sentiment: SentimentFocus }) {
   const values = sentiment.series.map((p) => p.value);
-  const { d, lastX, lastY, len } = linePath(values, {
-    w: 500,
-    h: 200,
-    padX: 20,
-    padTop: 20,
-    padBottom: 20,
+  const { d, lastX, lastY } = linePath(values, {
+    w: 560,
+    h: 260,
+    padX: 6,
+    padTop: 14,
+    padBottom: 24,
     yMin: -1,
     yMax: 1,
   });
   const [t0, t1, t2] = axisTicks(sentiment.series);
+  const zeroY = 14 + ((260 - 14 - 24) * 1) / 2;
 
   return (
-    <Card className="panel rv" id="sentCard">
+    <section className="panel span6">
       <div className="ph">
-        <span className="t">Sentiment curve</span>
-        <span className="s">{sentiment.label}</span>
+        <span>Sentiment curve</span>
+        <b>
+          {sentiment.label} ·{" "}
+          {sentiment.current != null ? signedDecimal(sentiment.current) : "—"}{" "}
+          {sentiment.trend}
+        </b>
       </div>
       <svg
         className="chart"
-        viewBox="0 0 500 200"
+        viewBox="0 0 560 260"
         role="img"
         aria-label="Net sentiment over time"
       >
+        {[0, 1, 2, 3, 4].map((g) => {
+          const y = 14 + (g * (260 - 14 - 24)) / 4;
+          return <line key={g} x1="6" y1={y} x2="554" y2={y} stroke="var(--line)" />;
+        })}
         <line
-          x1="18"
-          y1="100"
-          x2="482"
-          y2="100"
-          stroke="var(--grid)"
-          strokeDasharray="4 4"
+          x1="6"
+          y1={zeroY}
+          x2="554"
+          y2={zeroY}
+          stroke="var(--faint)"
+          strokeDasharray="3 4"
         />
-        <text className="axis" x="482" y="96" textAnchor="end">
+        <text className="axis" x="554" y={zeroY - 6} textAnchor="end">
           neutral
         </text>
         <path
-          className="draw"
-          id="sentLine"
           d={d}
           fill="none"
-          stroke="var(--neg)"
-          strokeWidth="2.2"
+          stroke="var(--sentiment)"
+          strokeWidth="2"
           strokeLinejoin="round"
-          style={vars({ "--len": len })}
+          strokeLinecap="round"
         />
         <circle
-          className="dot-in"
           cx={lastX}
           cy={lastY}
-          r="4.5"
-          fill="var(--neg)"
-          stroke="var(--card)"
+          r="4"
+          fill="var(--sentiment)"
+          stroke="var(--panel)"
           strokeWidth="2"
         />
-        <text className="axis" x="20" y="196">
+        <text className="axis" x="6" y="255">
           {t0}
         </text>
-        <text className="axis" x="250" y="196" textAnchor="middle">
+        <text className="axis" x="280" y="255" textAnchor="middle">
           {t1}
         </text>
-        <text className="axis" x="480" y="196" textAnchor="end">
+        <text className="axis" x="554" y="255" textAnchor="end">
           {t2}
         </text>
       </svg>
       <div className="legend">
         <span>
-          <i style={{ background: "var(--neg)" }}></i>net sentiment
-        </span>
-        <span>
-          {sentiment.current != null ? signedDecimal(sentiment.current) : "—"}{" "}
-          &amp; {sentiment.trend}
+          <i style={{ background: "var(--sentiment)" }}></i>net sentiment
         </span>
       </div>
-    </Card>
+    </section>
   );
 }
 
@@ -85,28 +86,25 @@ function MigrationPanel({ migration }: { migration: Migration }) {
   const maxShare = Math.max(...migration.destinations.map((x) => x.share), 0.0001);
 
   return (
-    <Card className="panel rv">
+    <section className="panel span6">
       <div className="ph">
-        <span className="t">Community migration</span>
-        <span className="s">{migration.title}</span>
+        <span>Community migration</span>
+        <b>{migration.title}</b>
       </div>
-      <div className="mig">
+      <div>
         {migration.destinations.map((dst) => {
-          const width = `${Math.round((dst.share / maxShare) * 100)}%`;
           const faint = dst.name.toLowerCase() === "stayed";
           return (
-            <div className="mrow" key={dst.name}>
+            <div className={`mrow${faint ? " faint" : ""}`} key={dst.name}>
               <span>{dst.name}</span>
-              <span className="tk">
+              <span className="track">
                 <i
-                  style={
-                    faint
-                      ? vars({ "--w": width, background: "var(--faint)" })
-                      : vars({ "--w": width })
-                  }
+                  style={{
+                    width: `${Math.round((dst.share / maxShare) * 100)}%`,
+                  }}
                 ></i>
               </span>
-              <span>{Math.round(dst.share * 100)}%</span>
+              <span className="mv">{Math.round(dst.share * 100)}%</span>
             </div>
           );
         })}
@@ -117,7 +115,7 @@ function MigrationPanel({ migration }: { migration: Migration }) {
         </span>
         <span>n = {migration.n} switch-intent threads</span>
       </div>
-    </Card>
+    </section>
   );
 }
 
@@ -129,15 +127,9 @@ export default function SignalCharts({ issue }: { issue: IssueData }) {
   if (!sentiment && !migration) return null;
 
   return (
-    <section className="blk">
-      <div className="sechead rv">
-        <h2>Signal charts</h2>
-        <span className="sub">Derived time-series · never raw content</span>
-      </div>
-      <div className="duo">
-        {sentiment && <SentimentPanel sentiment={sentiment} />}
-        {migration && <MigrationPanel migration={migration} />}
-      </div>
-    </section>
+    <>
+      {sentiment && <SentimentPanel sentiment={sentiment} />}
+      {migration && <MigrationPanel migration={migration} />}
+    </>
   );
 }

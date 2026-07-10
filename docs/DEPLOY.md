@@ -51,9 +51,10 @@ After this, collection is durable: every 2h the moat grows, no server to babysit
 - **Public site (API + web)**: the FastAPI service and Next.js frontend need
   their own hosting (e.g. web → Vercel, API → Fly.io/Railway) and the API must
   point at the same `DATABASE_URL`. Collection does not depend on this.
-- **Weekly issue**: `publish-issue` is currently manual/weekly; wire it as a
-  separate scheduled workflow once the editorial format from live data is set.
-  A published `weekly_issue` row is required for `/issue/current` (else it 404s
-  and the frontend falls back to sample data).
+- **Weekly issue**: published by
+  [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
+  (Mondays 09:00 UTC + manual dispatch). A published `weekly_issue` row is
+  required for `/issue/current` (else it 404s and the frontend falls back to
+  sample data).
 - **Cross-source data**: the API already combines all sources (Reddit + HN);
   surfacing it on the site only needs the API hosted and a weekly issue published.

@@ -26,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("collect-adoption", help="Collect adoption metrics (stars/releases/downloads/SE questions)")
     sub.add_parser("aggregate", help="Recompute derived aggregates from raw_* (idempotent)")
     sub.add_parser("purge", help="Purge expired/deleted raw content (compliance)")
+    sub.add_parser("detect-signals", help="Detect statistical emerging signals (volume spikes)")
     sub.add_parser("publish-issue", help="Publish/refresh this week's issue")
     sub.add_parser("scheduler", help="Run the APScheduler loop")
     sub.add_parser("seed-demo", help="Seed demo data into derived tables + weekly_issue")
@@ -77,6 +78,10 @@ def main(argv: list[str] | None = None) -> int:
         from .collector.purge import run_purge
 
         asyncio.run(run_purge(settings))
+    elif args.command == "detect-signals":
+        from .analysis.signals import run_detect_signals
+
+        asyncio.run(run_detect_signals(settings))
     elif args.command == "publish-issue":
         from .collector.publish import publish_issue
 

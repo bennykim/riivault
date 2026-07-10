@@ -1,0 +1,42 @@
+name: publish
+
+# Weekly issue publication: picks the lead entity from the derived
+# time-series (baseline z-score + volume floor) and upserts this week's
+# weekly_issue row that GET /issue/current serves. Monday morning UTC, and
+# on demand via the "Run workflow" button.
+#
+# Required repository secrets:
+#   DATABASE_URL       managed Postgres connection string (required)
+#   ANTHROPIC_API_KEY  optional — LLM headline/dek (template otherwise)
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Publish / refresh this week's issue
+        run: uv run riivault publish-issue

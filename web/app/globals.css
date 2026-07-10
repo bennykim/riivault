@@ -205,4 +205,10 @@ svg.chart { display: block; width: 100%; height: auto; }
 .foot b { color: var(--ink); }
 .foot-meta { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 12px; padding: 0 2px; font-size: .7rem; color: var(--faint); letter-spacing: .04em; }
 
+/* theme toggle (chip-styled button, cycles auto -> light -> dark) */
+.chip.theme-toggle {
+  cursor: pointer; font: inherit; background: none; appearance: none;
+}
+.chip.theme-toggle:hover { border-color: var(--sub); color: var(--ink); }
+
 :focus-visible { outline: 2px solid var(--primary-hi); outline-offset: 2px; }

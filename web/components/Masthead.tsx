@@ -1,5 +1,6 @@
 import type { IssueData } from "@/lib/types";
 import { dottedDate } from "@/lib/format";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Masthead({ issue }: { issue: IssueData }) {
   return (
@@ -14,6 +15,7 @@ export default function Masthead({ issue }: { issue: IssueData }) {
         <span className="chip">Issue {issue.issue_no}</span>
         <span className="chip">{dottedDate(issue.week_end)}</span>
         <span className="chip">{issue.communities} communities</span>
+        <ThemeToggle />
       </div>
     </header>
   );

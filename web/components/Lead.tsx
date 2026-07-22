@@ -24,7 +24,7 @@ export default function Lead({ issue }: { issue: IssueData }) {
             comments
           </>
         )}{" "}
-        · {lead.subreddits.join(" ")} · window <b>{lead.window_weeks}w</b>
+        · {lead.sources.join(" · ")} · window <b>{lead.window_weeks}w</b>
       </p>
     </section>
   );

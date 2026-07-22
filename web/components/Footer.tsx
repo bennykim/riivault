@@ -4,15 +4,14 @@ export default function Footer({ isSample }: { isSample: boolean }) {
       <div className="foot sans">
         <b>
           riivault publishes derived, aggregate insight and never raw or stored
-          Reddit content.
+          source content.
         </b>{" "}
         Individual posts live only in a 48-hour processing buffer, and deletions
-        are honored. The permanent asset is de-identified time series. Staying
-        non-commercial keeps collection inside Reddit&rsquo;s free tier, the
-        exact trap that shut GummySearch down in November 2025.
+        are honored. The permanent asset is de-identified time series, built
+        from public APIs under each provider&rsquo;s terms.
       </div>
       <div className="foot-meta">
-        <span>RIIVAULT · REDDIT SIGNAL INTELLIGENCE</span>
+        <span>RIIVAULT · BUILDER SIGNAL INTELLIGENCE</span>
         <span>
           {isSample
             ? "SAMPLE DATA · DESIGN PREVIEW · TERMINAL INTELLIGENCE"

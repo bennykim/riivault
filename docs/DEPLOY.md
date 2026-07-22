@@ -28,15 +28,16 @@ Set repository secrets (**Settings → Secrets and variables → Actions**):
 | Secret | Required | Notes |
 |--------|----------|-------|
 | `DATABASE_URL` | yes | Neon pooled connection string |
-| `REDDIT_CLIENT_ID` | no* | Reddit step no-ops until this is set (before API approval) |
+| `REDDIT_CLIENT_ID` | no* | Unset — the Reddit step no-ops without it |
 | `REDDIT_CLIENT_SECRET` | no* | |
 | `REDDIT_USER_AGENT` | no* | `web:riivault:v0.1 (by /u/yourname)` |
 | `ANTHROPIC_API_KEY` | no | Enables LLM VoC extraction; else VADER sentiment only |
 | `GH_API_TOKEN` | no | GitHub PAT → 5000 req/hr for Issues/adoption (60/hr without). Actions reserves the `GITHUB_` prefix, hence the name |
 | `PRODUCTHUNT_TOKEN` | no | Product Hunt developer token; the PH step no-ops without it |
 
-\* Add the Reddit secrets once the Data API request is approved. Until then HN
-collects on its own and the Reddit step logs "skipped".
+\* **The Reddit Data API request was declined**, so these stay unset and the
+Reddit step logs "skipped" on every run. The other sources collect on their own.
+Do not set them without an approved access grant.
 
 ## 3. First run + verify
 

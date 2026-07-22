@@ -36,7 +36,7 @@ export default function KpiCards({ issue }: { issue: IssueData }) {
       {lead.comments != null && (
         <Kpi value={<CountUp end={lead.comments} comma />} label="Comments analyzed" />
       )}
-      <Kpi value={<CountUp end={issue.communities} />} label="Communities tracked" />
+      <Kpi value={<CountUp end={issue.sources.length} />} label="Sources tracked" />
       <Kpi
         value={<CountUp end={lead.delta_value} />}
         delta={lead.delta_label}

@@ -6,9 +6,9 @@ import "./globals.css";
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree" });
 
 export const metadata: Metadata = {
-  title: "riivault · This Week on Reddit",
+  title: "riivault · Builder Signal Intelligence",
   description:
-    "Reddit Signal Intelligence. Derived, aggregate insight from founder communities. Never raw content.",
+    "Derived, aggregate time-series insight from public builder communities — Hacker News, GitHub, and Product Hunt. Never raw content.",
 };
 
 // Runs before hydration so a stored light/dark choice applies without a

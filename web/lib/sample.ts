@@ -9,7 +9,7 @@ export const sampleIssue: IssueData = {
   week_end: "2026-07-03",
   generated_at: "2026-07-03T09:00:00Z",
   niche: "SaaS",
-  communities: 34,
+  sources: ["Hacker News", "GitHub", "Product Hunt"],
   lead: {
     eyebrow: "Lead signal / momentum +38%",
     headline:
@@ -19,7 +19,7 @@ export const sampleIssue: IssueData = {
     threads: 1240,
     comments: 8900,
     window_weeks: 12,
-    subreddits: ["r/SaaS", "r/indiehackers", "r/microsaas"],
+    sources: ["Hacker News", "GitHub", "Product Hunt"],
     chart_title: 'Mention index · "AI wrapper" churn',
     delta_label: "+40% w/w",
     delta_value: 168,

@@ -207,7 +207,7 @@ export async function getCurrentIssue(): Promise<IssueData | null> {
     week_end: issue.week_end,
     generated_at: generatedAt,
     niche: payload.niche ?? null,
-    communities: payload.communities ?? null,
+    sources: payload.sources ?? [],
     lead,
     tracked,
     pain_points: painPoints,

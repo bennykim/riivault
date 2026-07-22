@@ -25,6 +25,24 @@ logger = logging.getLogger("riivault.publish")
 # fake surge (its history simply starts where collection started).
 LEAD_MIN_SOURCE_AGE_DAYS = 14
 
+# Display names for the sources an issue actually drew on. The payload must
+# name the real providers: attributing a figure to a platform we do not
+# collect from would misrepresent the data to readers.
+SOURCE_LABELS = {
+    "reddit": "Reddit",
+    "hackernews": "Hacker News",
+    "github": "GitHub",
+    "producthunt": "Product Hunt",
+    "stackexchange": "Stack Exchange",
+    "google_trends": "Google Trends",
+    "npm": "npm",
+    "pypi": "PyPI",
+}
+
+
+def _source_label(name: str) -> str:
+    return SOURCE_LABELS.get(name, name)
+
 
 def week_bounds(today: date) -> tuple[date, date]:
     start = today - timedelta(days=today.weekday())  # Monday
@@ -59,7 +77,7 @@ async def publish_issue(settings: Settings | None = None) -> dict:
 
             payload = {
                 "niche": "SaaS",
-                "communities": len(settings.subreddits),
+                "sources": await _active_source_labels(conn),
                 "generated_at": datetime.now(UTC).isoformat(),
                 "lead": {
                     "eyebrow": f"Lead signal · momentum {_signed(momentum_pct)}%",
@@ -67,7 +85,7 @@ async def publish_issue(settings: Settings | None = None) -> dict:
                     "threads": threads,
                     "comments": None,
                     "window_weeks": 12,
-                    "subreddits": [f"r/{s}" for s in settings.subreddits[:3]],
+                    "sources": await _labels_for(conn, lead_sources),
                     "chart_title": f'Mention Index — "{lead_name}"',
                     "delta_label": f"{_signed(momentum_pct)}% w/w",
                     "delta_value": series[-1]["value"] if series else 0,
@@ -97,6 +115,32 @@ async def publish_issue(settings: Settings | None = None) -> dict:
     result = {"published": True, "issue_no": issue_no, "week_start": str(week_start)}
     logger.info("publish_issue: %s", result)
     return result
+
+
+async def _active_source_labels(conn, days: int = 7) -> list[str]:
+    """Sources that actually contributed mentions in the issue window."""
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT s.name
+          FROM mention_daily md JOIN source s USING (source_id)
+         WHERE md.day > CURRENT_DATE - $1::int
+         ORDER BY s.name
+        """,
+        days,
+    )
+    return [_source_label(r["name"]) for r in rows]
+
+
+async def _labels_for(conn, source_ids: list[int] | None) -> list[str]:
+    """Display names for the lead's source pool (all sources when unfiltered)."""
+    if source_ids is None:
+        rows = await conn.fetch("SELECT name FROM source ORDER BY name")
+    else:
+        rows = await conn.fetch(
+            "SELECT name FROM source WHERE source_id = ANY($1::int[]) ORDER BY name",
+            source_ids,
+        )
+    return [_source_label(r["name"]) for r in rows]
 
 
 async def _lead_source_ids(conn) -> list[int] | None:
@@ -203,7 +247,7 @@ async def _headline(settings: Settings, lead_name: str, momentum_pct: float) -> 
             client = AsyncAnthropic(api_key=settings.anthropic_api_key)
             prompt = (
                 "Write a concise newsletter headline and one-sentence dek for a weekly "
-                "trend report on founder/indie-hacker communities (Hacker News, Reddit). "
+                "trend report on public founder/indie-hacker communities. "
                 "Do not name a specific platform as the data source. "
                 "Use ONLY these derived metrics (no raw content): "
                 f"entity={lead_name}, weekly mention momentum={momentum_pct}%. "

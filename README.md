@@ -18,9 +18,10 @@ is purged. Only de-identified aggregates are retained.
   tracked entities in launch copy (needs `PRODUCTHUNT_TOKEN`)
 - **Stack Exchange** — daily new-question counts per mapped tag
   (technical-interest proxy), no key required
-- **Reddit** — official Data API (read-only, ≤100 QPM; access pending approval).
-  Needed for the richest "why users switch / what hurts" feedback — HN skews
-  toward technical early-adopter discussion, not product feedback.
+**Reddit is not a source.** A Data API access request was declined under the
+[Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy),
+so no Reddit data is collected, stored, or displayed. The collector code remains
+in the tree but is inert without credentials.
 
 ## Layout
 

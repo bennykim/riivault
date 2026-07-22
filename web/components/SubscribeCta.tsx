@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const INITIAL = "FREE · 3,400+ FOUNDERS & PMS · NO RAW CONTENT";
+const INITIAL = "FREE · WEEKLY · DERIVED AGGREGATES ONLY, NO RAW CONTENT";
 const SUCCESS = "SUBSCRIBED · FIRST ISSUE LANDS NEXT TUESDAY ✓";
 const INVALID = "ENTER A VALID EMAIL TO GET TUESDAY'S SIGNAL";
 
@@ -45,7 +45,7 @@ export default function SubscribeCta() {
       <h3 className="sans">Get the signal, already read for you.</h3>
       <p className="sans">
         One email every Tuesday: rising pain points, sentiment flips, and
-        emerging bets from 34 founder communities.
+        emerging bets from public builder communities.
       </p>
       <form className="sub-form" onSubmit={onSubmit}>
         <input

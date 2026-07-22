@@ -27,7 +27,8 @@ export interface Lead {
   /** null until a source provides comment counts (HN aggregation has none). */
   comments: number | null;
   window_weeks: number;
-  subreddits: string[];
+  /** Display names of the sources this lead was computed from. */
+  sources: string[];
   chart_title: string;
   delta_label: string;
   delta_value: number;
@@ -86,7 +87,8 @@ export interface IssueData {
   week_end: string;
   generated_at: string;
   niche: string;
-  communities: number;
+  /** Sources that contributed to this issue, by display name. */
+  sources: string[];
   lead: Lead;
   tracked: TrackedEntity[];
   pain_points: PainPoint[];

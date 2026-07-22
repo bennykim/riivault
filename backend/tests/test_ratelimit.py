@@ -54,3 +54,28 @@ async def test_higher_qpm_is_faster():
 def test_invalid_rate_rejected():
     with pytest.raises(ValueError):
         TokenBucket(0)
+
+
+# --- Reddit user-agent policy enforcement -------------------------------- #
+import pytest
+
+from riivault.collector.reddit import validate_user_agent
+
+
+def test_user_agent_accepts_required_format():
+    ua = "web:riivault:v0.2 (by /u/example_user)"
+    assert validate_user_agent(ua) == ua
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "macos:riivault:v0.1 (non-commercial research)",  # missing by /u/
+        "riivault v0.2 by /u/example_user",               # unstructured
+        "web:riivault:v0.2",                              # no attribution
+        "",
+    ],
+)
+def test_user_agent_rejects_non_compliant(bad):
+    with pytest.raises(ValueError):
+        validate_user_agent(bad)

@@ -57,12 +57,23 @@ uv run riivault collect-once      # Reddit (needs API keys)
 uv run riivault aggregate         # recompute derived time-series (all sources)
 ```
 
-## Compliance (Reddit Responsible Builder Policy)
+## Compliance
+
+Applies to every source; the Reddit-specific rules are kept in force even
+though [no Reddit data is collected](#sources), so the pipeline is ready to be
+audited as-is.
 
 1. Raw content is auto-purged after 48h — only derived aggregates persist.
 2. Deleted / removed content is purged on detection and its references invalidated.
-3. Read-only and non-commercial, within the free-tier rate limit.
+3. Read-only, non-commercial, and within each provider's free-tier rate limit.
+   The Reddit client pins `read_only=True` and refuses to start unless the
+   User-Agent matches Reddit's required format.
 4. Only derived metrics are exposed — no raw content is redistributed.
+5. Authors are stored as a SHA-256 hash, never in plaintext.
+6. **Reddit content is excluded from LLM processing.** VoC classification sends
+   text to a third-party model API; the Reddit aggregation path deliberately
+   skips it, so Reddit content would be processed only by local code (entity
+   matching + VADER) and never leave this infrastructure.
 
 ## Deploy
 

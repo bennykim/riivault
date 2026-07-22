@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -127,12 +128,36 @@ async def collect_subreddit(
     return result
 
 
+# Reddit requires <platform>:<app ID>:<version> (by /u/<username>). Enforced
+# rather than merely documented: a malformed UA is a policy violation, so the
+# client refuses to be built instead of issuing non-compliant requests.
+USER_AGENT_RE = re.compile(
+    r"^[\w.-]+:[\w.-]+:v?[\w.-]+ \(by /u/[\w-]{3,20}\)$"
+)
+
+
+def validate_user_agent(user_agent: str) -> str:
+    """Return the UA unchanged, or raise ValueError if it violates the format."""
+    if not USER_AGENT_RE.match(user_agent or ""):
+        raise ValueError(
+            "REDDIT_USER_AGENT must match '<platform>:<app ID>:<version> "
+            f"(by /u/<username>)'; got {user_agent!r}"
+        )
+    return user_agent
+
+
 async def build_reddit(settings: Settings):
-    """Construct an asyncpraw Reddit client (read-only)."""
+    """Construct an asyncpraw Reddit client, pinned read-only.
+
+    ``read_only=True`` is set explicitly so no code path can post, vote, or
+    otherwise write, independent of which credentials are supplied.
+    """
     import asyncpraw
 
-    return asyncpraw.Reddit(
+    client = asyncpraw.Reddit(
         client_id=settings.reddit_client_id,
         client_secret=settings.reddit_client_secret,
-        user_agent=settings.reddit_user_agent,
+        user_agent=validate_user_agent(settings.reddit_user_agent),
     )
+    client.read_only = True
+    return client

@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     # --- Reddit API ---
     reddit_client_id: str = ""
     reddit_client_secret: str = ""
-    reddit_user_agent: str = "macos:riivault:v0.1 (non-commercial research)"
+    # Must satisfy collector.reddit.USER_AGENT_RE — the client refuses to build
+    # otherwise. The placeholder username is deliberately invalid-looking so an
+    # unconfigured deployment fails loudly instead of calling Reddit as someone else.
+    reddit_user_agent: str = "web:riivault:v0.2 (by /u/SET_REDDIT_USER_AGENT)"
     reddit_qpm: int = 90
 
     # --- Hacker News (no key required) ---
@@ -55,9 +58,11 @@ class Settings(BaseSettings):
     ph_topics: str = "artificial-intelligence,saas,developer-tools,productivity,no-code"
 
     # --- Collection targets (comma separated) ---
+    # Deliberately small: the five communities closest to the tracked niche.
+    # Steady-state cost is one listing request per subreddit per run (~60/day),
+    # far below the free-tier allowance — see docs/reddit-api-access-brief.html.
     riivault_subreddits: str = (
-        "SaaS,Entrepreneur,startups,indiehackers,webdev,nocode,"
-        "microsaas,SideProject,EntrepreneurRideAlong,smallbusiness"
+        "SaaS,indiehackers,microsaas,startups,Entrepreneur"
     )
 
     # --- AI (optional) ---

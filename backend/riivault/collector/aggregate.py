@@ -120,6 +120,12 @@ def aggregate_sentiments(
 # DB orchestration                                                            #
 # --------------------------------------------------------------------------- #
 async def run_aggregate(settings: Settings | None = None) -> dict:
+    """Aggregate ``raw_submission``/``raw_comment`` (Reddit) into derived tables.
+
+    Unlike the other sources this path runs **no LLM step**: Reddit content is
+    processed only by local code (entity matching + VADER sentiment) and never
+    leaves our infrastructure. Only de-identified aggregates are retained.
+    """
     settings = settings or get_settings()
     async with pool_context(settings) as pool:
         async with pool.acquire() as conn:
@@ -143,7 +149,6 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
 
             mention_events: list[dict[str, Any]] = []
             sentiment_events: list[dict[str, Any]] = []
-            voc_candidates: list[dict[str, Any]] = []
             affected_days: set[date] = set()
 
             for row in submissions:
@@ -166,11 +171,6 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
                     sentiment_events.append(
                         {"day": day, "entity_id": eid, "compound": compound}
                     )
-                voc_candidates.append(
-                    {"day": day, "score": row["score"] or 0, "text": text,
-                     "permalink": _permalink(row["reddit_id"]),
-                     "entity_ids": entity_ids}
-                )
 
             for row in comments:
                 day = row["created_utc"].date()
@@ -191,11 +191,6 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
                     sentiment_events.append(
                         {"day": day, "entity_id": eid, "compound": compound}
                     )
-                voc_candidates.append(
-                    {"day": day, "score": row["score"] or 0, "text": text,
-                     "permalink": _permalink(row["reddit_id"]),
-                     "entity_ids": entity_ids}
-                )
 
             mention_rows = aggregate_mentions(mention_events)
             sentiment_rows = aggregate_sentiments(sentiment_events)
@@ -241,10 +236,10 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
                         ],
                     )
 
-            if settings.voc_enabled:
-                await _run_voc(conn, settings, voc_candidates)
-            else:
-                logger.info("VoC step skipped (no ANTHROPIC_API_KEY)")
+            # No VoC step for Reddit, by policy choice: LLM classification would
+            # send post text to a third-party processor. Reddit content stays
+            # inside our infrastructure — sentiment here is local (VADER) and
+            # only aggregate counts are retained.
 
     summary = {
         "days": len(affected_days),
@@ -637,11 +632,6 @@ async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -
             today, fr_id, entity_id, label, volume,
         )
     await _recompute_fr_momentum(conn)
-
-
-def _permalink(reddit_id: str) -> str:
-    short = reddit_id.split("_", 1)[-1]
-    return f"https://www.reddit.com/comments/{short}"
 
 
 async def _upsert_feature_request(

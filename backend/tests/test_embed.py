@@ -1,10 +1,19 @@
 """Pure dedup math: vector literals, cosine similarity, greedy clustering,
-and the recluster merge plan."""
+the recluster merge plan, and the embed 429-retry loop."""
 
 from datetime import date
 
+import httpx
+
 from riivault.collector.recluster import plan_merges
-from riivault.nlp.embed import cosine_similarity, greedy_clusters, vector_literal
+from riivault.config import Settings
+from riivault.nlp.embed import (
+    BASE_BACKOFF,
+    cosine_similarity,
+    embed_texts,
+    greedy_clusters,
+    vector_literal,
+)
 
 
 def test_vector_literal_format():
@@ -70,3 +79,70 @@ def test_plan_merges_no_merges_below_threshold():
     ]
     vectors = [[1.0, 0.0], [0.0, 1.0]]  # orthogonal
     assert plan_merges(rows, vectors, threshold=0.85) == []
+
+
+# --- embed_texts 429 retry loop (no real network / no real sleep) ----------
+
+def _settings(**overrides) -> Settings:
+    # _env_file=None so a real ../.env VOYAGE_API_KEY can't leak into tests.
+    return Settings(
+        _env_file=None, database_url="postgresql://x/y", **overrides
+    )
+
+
+async def test_embed_retries_on_429_then_succeeds():
+    calls = {"n": 0}
+    slept: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:  # first attempt rate-limited
+            return httpx.Response(429, headers={"Retry-After": "2"})
+        return httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1, 0.2]}]})
+
+    transport = httpx.MockTransport(handler)
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    # Patch the client the module builds so the mock transport is used.
+    import riivault.nlp.embed as embed_mod
+
+    orig = embed_mod.httpx.AsyncClient
+    embed_mod.httpx.AsyncClient = lambda **kw: orig(transport=transport, **kw)
+    try:
+        out = await embed_texts(
+            ["a complaint"], _settings(voyage_api_key="test-key"), sleep=fake_sleep
+        )
+    finally:
+        embed_mod.httpx.AsyncClient = orig
+
+    assert out == [[0.1, 0.2]]
+    assert calls["n"] == 2
+    assert slept == [2.0]  # Retry-After honored, not the backoff default
+
+
+async def test_embed_gives_up_after_max_retries():
+    slept: list[float] = []
+    transport = httpx.MockTransport(lambda req: httpx.Response(429))
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    import riivault.nlp.embed as embed_mod
+
+    orig = embed_mod.httpx.AsyncClient
+    embed_mod.httpx.AsyncClient = lambda **kw: orig(transport=transport, **kw)
+    try:
+        out = await embed_texts(
+            ["x"], _settings(voyage_api_key="test-key"), sleep=fake_sleep
+        )
+    finally:
+        embed_mod.httpx.AsyncClient = orig
+
+    assert out is None  # graceful degrade to exact-match dedup
+    assert slept and slept[0] == BASE_BACKOFF  # backoff used when no Retry-After
+
+
+async def test_embed_disabled_without_key():
+    assert await embed_texts(["x"], _settings()) is None

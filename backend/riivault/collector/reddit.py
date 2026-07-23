@@ -11,7 +11,7 @@ import hashlib
 import logging
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 
@@ -21,6 +21,22 @@ from .ratelimit import TokenBucket
 logger = logging.getLogger("riivault.reddit")
 
 RAW_TTL_HOURS = 48
+
+# First-pass backfill horizon for cursor-less collection. Without it, a newly
+# onboarded entity/repo pulls years of sparse history into the daily series,
+# which poisons every baseline built on "missing day = 0" (the 2017/2023 tail
+# observed after the initial HN/GitHub onboarding).
+BACKFILL_MAX_DAYS = 30
+
+
+def backfill_floor(
+    last_seen: datetime | None, now: datetime | None = None
+) -> datetime:
+    """The incremental floor for a collector: its cursor, else now - 30d."""
+    if last_seen is not None:
+        return last_seen
+    now = now if now is not None else datetime.now(UTC)
+    return now - timedelta(days=BACKFILL_MAX_DAYS)
 
 
 def author_hash(author_name: str | None) -> str | None:

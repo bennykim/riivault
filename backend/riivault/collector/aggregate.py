@@ -20,6 +20,7 @@ from typing import Any
 from ..config import Settings, get_settings
 from ..db import pool_context
 from ..entities import load_matcher
+from ..nlp.embed import embed_texts, vector_literal
 from ..nlp.sentiment import sentiment_compound
 from ..nlp.voc import classify_documents
 
@@ -119,6 +120,62 @@ def aggregate_sentiments(
 # --------------------------------------------------------------------------- #
 # DB orchestration                                                            #
 # --------------------------------------------------------------------------- #
+async def _write_daily_rows(
+    conn,
+    source_id: int,
+    affected_days: set[date],
+    mention_rows: list[dict[str, Any]],
+    sentiment_rows: list[dict[str, Any]] | None = None,
+) -> None:
+    """Atomically replace a source's affected days in the derived tables.
+
+    Each day is DELETEd then re-INSERTed so recomputation is idempotent.
+    ``sentiment_rows=None`` writes mentions only (Product Hunt: launch copy is
+    maker marketing, so no sentiment series is kept for it).
+    """
+    async with conn.transaction():
+        for day in affected_days:
+            await conn.execute(
+                "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
+                day, source_id,
+            )
+            if sentiment_rows is not None:
+                await conn.execute(
+                    "DELETE FROM sentiment_daily WHERE day = $1 AND source_id = $2",
+                    day, source_id,
+                )
+        if mention_rows:
+            await conn.executemany(
+                """
+                INSERT INTO mention_daily
+                    (day, entity_id, source_id, subreddit, mention_count,
+                     unique_authors, score_sum, upvote_ratio_avg, comment_sum)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                """,
+                [
+                    (m["day"], m["entity_id"], source_id, m["subreddit"],
+                     m["mention_count"], m["unique_authors"], m["score_sum"],
+                     m["upvote_ratio_avg"], m["comment_sum"])
+                    for m in mention_rows
+                ],
+            )
+        if sentiment_rows:
+            await conn.executemany(
+                """
+                INSERT INTO sentiment_daily
+                    (day, entity_id, source_id, sentiment_mean, sentiment_std,
+                     pos_ratio, neg_ratio, neu_ratio, sample_size)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                """,
+                [
+                    (s["day"], s["entity_id"], source_id, s["sentiment_mean"],
+                     s["sentiment_std"], s["pos_ratio"], s["neg_ratio"],
+                     s["neu_ratio"], s["sample_size"])
+                    for s in sentiment_rows
+                ],
+            )
+
+
 async def run_aggregate(settings: Settings | None = None) -> dict:
     """Aggregate ``raw_submission``/``raw_comment`` (Reddit) into derived tables.
 
@@ -195,46 +252,9 @@ async def run_aggregate(settings: Settings | None = None) -> dict:
             mention_rows = aggregate_mentions(mention_events)
             sentiment_rows = aggregate_sentiments(sentiment_events)
 
-            async with conn.transaction():
-                for day in affected_days:
-                    await conn.execute(
-                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                    await conn.execute(
-                        "DELETE FROM sentiment_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                if mention_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO mention_daily
-                            (day, entity_id, source_id, subreddit, mention_count,
-                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (m["day"], m["entity_id"], source_id, m["subreddit"],
-                             m["mention_count"], m["unique_authors"], m["score_sum"],
-                             m["upvote_ratio_avg"], m["comment_sum"])
-                            for m in mention_rows
-                        ],
-                    )
-                if sentiment_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO sentiment_daily
-                            (day, entity_id, source_id, sentiment_mean, sentiment_std,
-                             pos_ratio, neg_ratio, neu_ratio, sample_size)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (s["day"], s["entity_id"], source_id, s["sentiment_mean"],
-                             s["sentiment_std"], s["pos_ratio"], s["neg_ratio"],
-                             s["neu_ratio"], s["sample_size"])
-                            for s in sentiment_rows
-                        ],
-                    )
+            await _write_daily_rows(
+                conn, source_id, affected_days, mention_rows, sentiment_rows
+            )
 
             # No VoC step for Reddit, by policy choice: LLM classification would
             # send post text to a third-party processor. Reddit content stays
@@ -310,46 +330,9 @@ async def run_aggregate_hn(settings: Settings | None = None) -> dict:
             mention_rows = aggregate_mentions(mention_events)
             sentiment_rows = aggregate_sentiments(sentiment_events)
 
-            async with conn.transaction():
-                for day in affected_days:
-                    await conn.execute(
-                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                    await conn.execute(
-                        "DELETE FROM sentiment_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                if mention_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO mention_daily
-                            (day, entity_id, source_id, subreddit, mention_count,
-                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (m["day"], m["entity_id"], source_id, m["subreddit"],
-                             m["mention_count"], m["unique_authors"], m["score_sum"],
-                             m["upvote_ratio_avg"], m["comment_sum"])
-                            for m in mention_rows
-                        ],
-                    )
-                if sentiment_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO sentiment_daily
-                            (day, entity_id, source_id, sentiment_mean, sentiment_std,
-                             pos_ratio, neg_ratio, neu_ratio, sample_size)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (s["day"], s["entity_id"], source_id, s["sentiment_mean"],
-                             s["sentiment_std"], s["pos_ratio"], s["neg_ratio"],
-                             s["neu_ratio"], s["sample_size"])
-                            for s in sentiment_rows
-                        ],
-                    )
+            await _write_daily_rows(
+                conn, source_id, affected_days, mention_rows, sentiment_rows
+            )
 
             if settings.voc_enabled:
                 await _run_voc(conn, settings, voc_candidates)
@@ -430,46 +413,9 @@ async def run_aggregate_gh(settings: Settings | None = None) -> dict:
             mention_rows = aggregate_mentions(mention_events)
             sentiment_rows = aggregate_sentiments(sentiment_events)
 
-            async with conn.transaction():
-                for day in affected_days:
-                    await conn.execute(
-                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                    await conn.execute(
-                        "DELETE FROM sentiment_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                if mention_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO mention_daily
-                            (day, entity_id, source_id, subreddit, mention_count,
-                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (m["day"], m["entity_id"], source_id, m["subreddit"],
-                             m["mention_count"], m["unique_authors"], m["score_sum"],
-                             m["upvote_ratio_avg"], m["comment_sum"])
-                            for m in mention_rows
-                        ],
-                    )
-                if sentiment_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO sentiment_daily
-                            (day, entity_id, source_id, sentiment_mean, sentiment_std,
-                             pos_ratio, neg_ratio, neu_ratio, sample_size)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (s["day"], s["entity_id"], source_id, s["sentiment_mean"],
-                             s["sentiment_std"], s["pos_ratio"], s["neg_ratio"],
-                             s["neu_ratio"], s["sample_size"])
-                            for s in sentiment_rows
-                        ],
-                    )
+            await _write_daily_rows(
+                conn, source_id, affected_days, mention_rows, sentiment_rows
+            )
 
             if settings.voc_enabled:
                 await _run_voc(conn, settings, voc_candidates)
@@ -534,27 +480,7 @@ async def run_aggregate_ph(settings: Settings | None = None) -> dict:
 
             mention_rows = aggregate_mentions(mention_events)
 
-            async with conn.transaction():
-                for day in affected_days:
-                    await conn.execute(
-                        "DELETE FROM mention_daily WHERE day = $1 AND source_id = $2",
-                        day, source_id,
-                    )
-                if mention_rows:
-                    await conn.executemany(
-                        """
-                        INSERT INTO mention_daily
-                            (day, entity_id, source_id, subreddit, mention_count,
-                             unique_authors, score_sum, upvote_ratio_avg, comment_sum)
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                        """,
-                        [
-                            (m["day"], m["entity_id"], source_id, m["subreddit"],
-                             m["mention_count"], m["unique_authors"], m["score_sum"],
-                             m["upvote_ratio_avg"], m["comment_sum"])
-                            for m in mention_rows
-                        ],
-                    )
+            await _write_daily_rows(conn, source_id, affected_days, mention_rows)
 
     summary = {"days": len(affected_days), "mention_rows": len(mention_rows)}
     logger.info("aggregate_ph complete: %s", summary)
@@ -595,12 +521,18 @@ async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -
     if not records:
         return
 
+    # Semantic dedup embeddings (one batch call). None → exact-match fallback,
+    # e.g. when VOYAGE_API_KEY is unset or the API call failed.
+    embeddings = await embed_texts([rec["normalized_text"] for rec in records], settings)
+    if embeddings is None:
+        logger.info("VoC dedup running without embeddings (exact match only)")
+
     today = date.today()
     name_rows = await conn.fetch("SELECT entity_id, canonical_name FROM entity")
     name_to_id = {r["canonical_name"].lower(): r["entity_id"] for r in name_rows}
     daily_volume: dict[tuple, int] = defaultdict(int)
 
-    for rec in records:
+    for rec_idx, rec in enumerate(records):
         idx = rec.get("index")
         if not isinstance(idx, int) or not (0 <= idx < len(top)):
             continue
@@ -613,7 +545,9 @@ async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -
         norm = rec["normalized_text"]
         permalink = cand["permalink"]
         fr_id = await _upsert_feature_request(
-            conn, entity_id, rec["kind"], norm, permalink, today
+            conn, entity_id, rec["kind"], norm, permalink, today,
+            embedding=embeddings[rec_idx] if embeddings else None,
+            threshold=settings.voc_dedup_threshold,
         )
         daily_volume[(fr_id, entity_id, norm)] += 1
 
@@ -635,35 +569,68 @@ async def _run_voc(conn, settings: Settings, candidates: list[dict[str, Any]]) -
 
 
 async def _upsert_feature_request(
-    conn, entity_id: int, kind: str, norm: str, permalink: str, today: date
+    conn,
+    entity_id: int,
+    kind: str,
+    norm: str,
+    permalink: str,
+    today: date,
+    embedding: list[float] | None = None,
+    threshold: float = 0.85,
 ) -> int:
+    """Merge into the ledger: exact text match, then semantic nearest-neighbor.
+
+    The LLM rewords the same complaint differently every run, so exact match
+    alone almost never fires (observed: 845 rows, 4 merges). With an embedding,
+    the entry merges into the closest existing entry of the same entity+kind
+    when cosine similarity clears ``threshold``; the existing row's wording is
+    kept (first-seen phrasing is the ledger identity).
+    """
+    vec = vector_literal(embedding) if embedding is not None else None
+
     row = await conn.fetchrow(
         """
-        SELECT fr_id FROM feature_request
+        SELECT fr_id, embedding IS NULL AS no_embedding FROM feature_request
          WHERE entity_id = $1 AND lower(normalized_text) = lower($2)
         """,
         entity_id, norm,
     )
+    if row is None and vec is not None:
+        near = await conn.fetchrow(
+            """
+            SELECT fr_id, 1 - (embedding <=> $2::vector) AS similarity
+              FROM feature_request
+             WHERE entity_id = $1 AND kind = $3 AND embedding IS NOT NULL
+             ORDER BY embedding <=> $2::vector
+             LIMIT 1
+            """,
+            entity_id, vec, kind,
+        )
+        if near is not None and near["similarity"] >= threshold:
+            row = {"fr_id": near["fr_id"], "no_embedding": False}
+
     if row:
         await conn.execute(
             """
             UPDATE feature_request
                SET occurrences = occurrences + 1,
                    last_seen = $2,
-                   example_ref = COALESCE($3, example_ref)
+                   example_ref = COALESCE($3, example_ref),
+                   embedding = COALESCE(embedding, $4::vector)
              WHERE fr_id = $1
             """,
-            row["fr_id"], today, permalink,
+            row["fr_id"], today, permalink, vec if row["no_embedding"] else None,
         )
         return row["fr_id"]
     return await conn.fetchval(
         """
         INSERT INTO feature_request
-            (entity_id, kind, normalized_text, first_seen, last_seen, occurrences, example_ref)
-        VALUES ($1, $2, $3, $4, $4, 1, $5)
+            (entity_id, kind, normalized_text, first_seen, last_seen,
+             occurrences, example_ref, embedding)
+        VALUES ($1, $2, $3, $4, $4, 1, $5, $6::vector)
         RETURNING fr_id
         """,
-        entity_id, kind, norm, today, permalink,
+        entity_id, kind, norm, today, permalink, vec,
     )
 
 

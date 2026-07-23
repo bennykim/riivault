@@ -19,7 +19,7 @@ import httpx
 from ..config import Settings, get_settings
 from ..db import pool_context
 from .ratelimit import TokenBucket
-from .reddit import CollectResult, author_hash
+from .reddit import CollectResult, author_hash, backfill_floor
 
 logger = logging.getLogger("riivault.hn")
 
@@ -116,7 +116,10 @@ async def collect_term(
     last_seen = await _get_cursor(conn, key)
     newest_created = last_seen
     newest_hn_id: str | None = None
-    since = int(last_seen.timestamp()) if last_seen is not None else 0
+    # Cursor when present, else a 30-day horizon — a fresh term must not
+    # backfill years of sparse history into the daily series.
+    floor = backfill_floor(last_seen)
+    since = int(floor.timestamp())
     rows: list[tuple] = []
 
     try:
@@ -140,7 +143,7 @@ async def collect_term(
             for hit in hits:
                 row = parse_hit(hit, kind)
                 created = row[-1]
-                if last_seen is not None and created <= last_seen:
+                if created <= floor:
                     continue
                 rows.append(row)
                 if newest_created is None or created > newest_created:

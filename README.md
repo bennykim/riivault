@@ -49,13 +49,19 @@ cd ../web && pnpm install && pnpm dev     # Next.js :3000
 Collect real data:
 
 ```bash
+uv run riivault sync-entities     # apply backend/entities.yaml (the tracked catalog)
 uv run riivault collect-hn        # Hacker News (no key)
 uv run riivault collect-gh        # GitHub Issues on mapped repos
 uv run riivault collect-ph        # Product Hunt launches (needs token)
 uv run riivault collect-adoption  # stars / releases / downloads / SE questions
 uv run riivault collect-once      # Reddit (needs API keys)
 uv run riivault aggregate         # recompute derived time-series (all sources)
+uv run riivault recluster-voc     # merge duplicate VoC entries (dry-run; --apply)
 ```
+
+What riivault tracks lives in [`backend/entities.yaml`](backend/entities.yaml) —
+edit it and push; the collect workflow syncs it before every pass. VoC semantic
+dedup uses Voyage embeddings when `VOYAGE_API_KEY` is set (exact match otherwise).
 
 ## Compliance
 

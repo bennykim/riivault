@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
+    # --- Embeddings (optional; VoC semantic dedup) ---
+    # voyage-3.5-lite outputs 1024 dims, matching feature_request.embedding
+    # VECTOR(1024). Without a key the dedup degrades to exact text match.
+    voyage_api_key: str = ""
+    voyage_model: str = "voyage-3.5-lite"
+    voc_dedup_threshold: float = 0.85  # cosine similarity to merge VoC entries
+
     # --- Web (unused by backend, kept for parity/introspection) ---
     api_url: str = "http://localhost:8000"
     next_public_api_url: str = "http://localhost:8000"
@@ -85,6 +92,11 @@ class Settings(BaseSettings):
     def voc_enabled(self) -> bool:
         """VoC extraction runs only when an Anthropic API key is configured."""
         return bool(self.anthropic_api_key.strip())
+
+    @property
+    def voc_embed_enabled(self) -> bool:
+        """Semantic VoC dedup runs only when a Voyage API key is configured."""
+        return bool(self.voyage_api_key.strip())
 
 
 @lru_cache

@@ -32,6 +32,7 @@ Set repository secrets (**Settings → Secrets and variables → Actions**):
 | `REDDIT_CLIENT_SECRET` | no* | |
 | `REDDIT_USER_AGENT` | no* | `web:riivault:v0.1 (by /u/yourname)` |
 | `ANTHROPIC_API_KEY` | no | Enables LLM VoC extraction; else VADER sentiment only |
+| `VOYAGE_API_KEY` | no | Enables semantic VoC dedup (Voyage embeddings, 1024d); else exact text match only |
 | `GH_API_TOKEN` | no | GitHub PAT → 5000 req/hr for Issues/adoption (60/hr without). Actions reserves the `GITHUB_` prefix, hence the name |
 | `PRODUCTHUNT_TOKEN` | no | Product Hunt developer token; the PH step no-ops without it |
 

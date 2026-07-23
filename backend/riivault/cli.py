@@ -19,6 +19,7 @@ def _configure_logging() -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="riivault", description="riivault backend CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("sync-entities", help="Upsert the entity catalog from entities.yaml")
     sub.add_parser("collect-once", help="Run one incremental Reddit collection pass")
     sub.add_parser("collect-hn", help="Run one incremental Hacker News collection pass")
     sub.add_parser("collect-gh", help="Run one incremental GitHub Issues collection pass")
@@ -27,6 +28,14 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("aggregate", help="Recompute derived aggregates from raw_* (idempotent)")
     sub.add_parser("purge", help="Purge expired/deleted raw content (compliance)")
     sub.add_parser("detect-signals", help="Detect statistical emerging signals (volume spikes)")
+    rc_p = sub.add_parser(
+        "recluster-voc",
+        help="Merge semantically duplicate VoC entries (dry-run unless --apply)",
+    )
+    rc_p.add_argument("--apply", action="store_true",
+                      help="Execute the merge (default: print the plan only)")
+    rc_p.add_argument("--threshold", type=float, default=None,
+                      help="Cosine similarity merge threshold (default: settings)")
     sub.add_parser("publish-issue", help="Publish/refresh this week's issue")
     sub.add_parser("scheduler", help="Run the APScheduler loop")
     sub.add_parser("seed-demo", help="Seed demo data into derived tables + weekly_issue")
@@ -42,7 +51,11 @@ def main(argv: list[str] | None = None) -> int:
     _configure_logging()
     settings = get_settings()
 
-    if args.command == "collect-once":
+    if args.command == "sync-entities":
+        from .catalog import sync_entities
+
+        asyncio.run(sync_entities(settings))
+    elif args.command == "collect-once":
         from .collector.pipeline import collect_once
 
         asyncio.run(collect_once(settings))
@@ -82,6 +95,10 @@ def main(argv: list[str] | None = None) -> int:
         from .analysis.signals import run_detect_signals
 
         asyncio.run(run_detect_signals(settings))
+    elif args.command == "recluster-voc":
+        from .collector.recluster import recluster_voc
+
+        asyncio.run(recluster_voc(settings, apply=args.apply, threshold=args.threshold))
     elif args.command == "publish-issue":
         from .collector.publish import publish_issue
 

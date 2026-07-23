@@ -24,7 +24,7 @@ import httpx
 from ..config import Settings, get_settings
 from ..db import pool_context
 from .ratelimit import TokenBucket
-from .reddit import CollectResult, author_hash
+from .reddit import CollectResult, author_hash, backfill_floor
 
 logger = logging.getLogger("riivault.gh")
 
@@ -147,6 +147,9 @@ async def collect_repo(
     last_seen = await _get_cursor(conn, key)
     newest_created = last_seen
     newest_gh_id: str | None = None
+    # Cursor when present, else a 30-day horizon — a fresh repo must not
+    # backfill years of sparse history into the daily series.
+    floor = backfill_floor(last_seen)
     rows: list[tuple] = []
 
     try:
@@ -177,7 +180,7 @@ async def collect_repo(
                     continue  # the issues endpoint also lists PRs
                 row = parse_issue(item, repo, kind)
                 created = row[-1]
-                if last_seen is not None and created <= last_seen:
+                if created <= floor:
                     reached_cursor = True
                     continue
                 rows.append(row)

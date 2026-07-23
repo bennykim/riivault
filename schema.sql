@@ -1,11 +1,16 @@
 -- =========================================================================
--- riivault — Reddit 데이터 인텔리전스 플랫폼 스키마
+-- riivault — 멀티소스 빌더 시그널 인텔리전스 스키마
+-- 소스: Hacker News · GitHub Issues · GitHub stars/releases · npm/PyPI ·
+--       Stack Exchange · Product Hunt (Reddit은 API 미승인으로 비활성 — 컬렉터는
+--       inert 상태로 유지, 관련 컴플라이언스 테이블은 그대로 감사 가능)
 -- 설계 원칙:
 --   (1) 이원 저장: raw_* (≤48h TTL, 처리 전용) ↔ 파생/집계 (영구 자산)
---   (2) 시계열: pgvector(임베딩). *_daily는 day 기준 시계열이나, 현 규모(일 수백~수천 행)
---       에서는 일반 테이블로 충분하여 TimescaleDB는 유예(규모 확장 시 도입 — 아래 주석).
---   (3) Reddit 정책 정합: 원문 미영구보관, 삭제 이벤트 반영, 비식별 집계만 자산화
---   (4) Stack A(그린필드): 수집=Python asyncpraw+APScheduler, 저장=Postgres 단일 DB
+--   (2) 시계열: pgvector(임베딩 — VoC 시맨틱 중복제거). *_daily는 day 기준
+--       시계열이나, 현 규모(일 수백~수천 행)에서는 일반 테이블로 충분하여
+--       TimescaleDB는 유예(규모 확장 시 도입 — 아래 주석).
+--   (3) 플랫폼 정책 정합: 원문 미영구보관, 삭제 이벤트 반영, 비식별 집계만 자산화
+--   (4) 운영: 수집=GitHub Actions cron(서버리스, 2h) + Python 컬렉터,
+--       저장=관리형 Postgres 단일 DB. 엔티티 카탈로그=backend/entities.yaml.
 -- 대상: PostgreSQL 15+ / pgvector — Neon·Supabase 등 관리형 무료 tier 호환.
 -- =========================================================================
 

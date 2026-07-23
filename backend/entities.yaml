@@ -1,0 +1,264 @@
+# riivault entity catalog — the single source of truth for what we track.
+#
+# Applied by `riivault sync-entities` (idempotent upsert on (type, name));
+# the collect workflow runs it before every collection pass, so editing this
+# file + pushing is the only step needed to onboard or update an entity.
+# Entities absent from this file are NOT deleted (non-destructive sync).
+#
+# Field reference (all optional except type/name):
+#   aliases   extra match terms for the discourse matcher (canonical name is
+#             always matched; keep terms unambiguous — common English words
+#             like "Make", "Linear", "Bubble" false-match everywhere)
+#   tracked   true → shown in the TrackedRail/Ticker UI (keep this list short)
+#   context   display community label (UI only)
+#   repo      owner/name → GitHub Issues feedback + stars/releases adoption
+#   npm       package    → npm downloads adoption series
+#   pypi      package    → PyPI downloads adoption series
+#   se_tag    Stack Overflow tag → new-questions adoption series
+#
+# Every repo/npm/pypi/se_tag below was verified to exist on 2026-07-23.
+
+entities:
+  # ---- original catalog (values mirror the live DB as of 2026-07-23) ----
+  - type: product
+    name: Cursor
+    aliases: [Cursor, Cursor AI, cursor.sh]
+    tracked: true
+    context: r/programming
+    repo: cursor/cursor # issues disabled upstream → stars/releases only
+
+  - type: product
+    name: Notion AI
+    aliases: [Notion AI, Notion]
+    tracked: true
+    context: r/productivity
+
+  - type: product
+    name: Zapier
+    aliases: [Zapier]
+    tracked: true
+    context: r/nocode
+    repo: zapier/zapier-platform
+    npm: zapier-platform-core
+    se_tag: zapier
+
+  - type: product
+    name: Supabase
+    aliases: [Supabase]
+    tracked: true
+    context: r/webdev
+    repo: supabase/supabase
+    npm: "@supabase/supabase-js"
+    pypi: supabase
+    se_tag: supabase
+
+  - type: product
+    name: Framer
+    aliases: [Framer]
+    tracked: true
+    context: r/web_design
+
+  - type: topic
+    name: AI wrapper
+    aliases: [AI wrapper, AI wrappers, AI-wrapper, GPT wrapper]
+    tracked: false
+    context: r/SaaS
+
+  - type: topic
+    name: AI note-takers
+    aliases: [AI note-taker, AI note-takers, AI notetaker, AI note taker]
+    tracked: false
+    context: r/productivity
+
+  # ---- expansion wave 1 (2026-07-23): SaaS / indie-builder niche ----
+  - type: product
+    name: Vercel
+    tracked: true
+    context: r/nextjs
+    repo: vercel/vercel
+    npm: vercel
+    se_tag: vercel
+
+  - type: product
+    name: Stripe
+    tracked: true
+    context: r/SaaS
+    repo: stripe/stripe-node
+    npm: stripe
+    pypi: stripe
+    se_tag: stripe-payments
+
+  - type: product
+    name: n8n
+    tracked: true
+    context: r/automation
+    repo: n8n-io/n8n
+    npm: n8n
+    se_tag: n8n
+
+  - type: product
+    name: Next.js
+    aliases: [Next.js, NextJS]
+    tracked: false
+    context: r/nextjs
+    repo: vercel/next.js
+    npm: next
+    se_tag: next.js
+
+  - type: product
+    name: Firebase
+    tracked: false
+    context: r/Firebase
+    repo: firebase/firebase-js-sdk
+    npm: firebase
+    pypi: firebase-admin
+    se_tag: firebase
+
+  - type: product
+    name: PocketBase
+    tracked: false
+    context: r/pocketbase
+    repo: pocketbase/pocketbase
+    npm: pocketbase
+    se_tag: pocketbase
+
+  - type: product
+    name: Appwrite
+    tracked: false
+    context: r/appwrite
+    repo: appwrite/appwrite
+    npm: appwrite
+    pypi: appwrite
+    se_tag: appwrite
+
+  - type: product
+    name: Airtable
+    tracked: false
+    context: r/nocode
+    npm: airtable
+    se_tag: airtable
+
+  - type: product
+    name: Webflow
+    tracked: false
+    context: r/webflow
+    se_tag: webflow
+
+  - type: product
+    name: PostHog
+    tracked: false
+    context: r/SaaS
+    repo: PostHog/posthog
+    npm: posthog-js
+    pypi: posthog
+    se_tag: posthog
+
+  - type: product
+    name: Auth0
+    tracked: false
+    context: r/webdev
+    repo: auth0/node-auth0
+    npm: auth0
+    pypi: auth0-python
+    se_tag: auth0
+
+  - type: product
+    name: LangChain
+    tracked: false
+    context: r/LangChain
+    repo: langchain-ai/langchain
+    npm: langchain
+    pypi: langchain
+    se_tag: langchain
+
+  - type: product
+    name: Svelte
+    aliases: [Svelte, SvelteKit]
+    tracked: false
+    context: r/sveltejs
+    repo: sveltejs/svelte
+    npm: svelte
+    se_tag: svelte
+
+  - type: product
+    name: Shopify
+    tracked: false
+    context: r/shopify
+    repo: Shopify/cli
+    se_tag: shopify
+
+  - type: product
+    name: Twilio
+    tracked: false
+    context: r/SaaS
+    repo: twilio/twilio-node
+    npm: twilio
+    pypi: twilio
+    se_tag: twilio
+
+  - type: product
+    name: Obsidian
+    tracked: false
+    context: r/ObsidianMD
+
+  - type: product
+    name: Fly.io
+    aliases: [Fly.io]
+    tracked: false
+    context: r/webdev
+    repo: superfly/flyctl
+
+  - type: product
+    name: Cloudflare
+    aliases: [Cloudflare, Cloudflare Workers]
+    tracked: false
+    context: r/webdev
+    repo: cloudflare/workers-sdk
+    npm: wrangler
+    se_tag: cloudflare
+
+  - type: product
+    name: Deno
+    tracked: false
+    context: r/Deno
+    repo: denoland/deno
+    se_tag: deno
+
+  - type: product
+    name: tRPC
+    tracked: false
+    context: r/typescript
+    repo: trpc/trpc
+    npm: "@trpc/server"
+    se_tag: trpc
+
+  - type: product
+    name: Prisma
+    tracked: false
+    context: r/typescript
+    repo: prisma/prisma
+    npm: prisma
+    se_tag: prisma
+
+  - type: product
+    name: HTMX
+    aliases: [HTMX, htmx]
+    tracked: false
+    context: r/htmx
+    repo: bigskysoftware/htmx
+    npm: htmx.org
+    se_tag: htmx
+
+  - type: product
+    name: Tailwind CSS
+    aliases: [Tailwind CSS, tailwindcss, TailwindCSS]
+    tracked: false
+    context: r/webdev
+    repo: tailwindlabs/tailwindcss
+    npm: tailwindcss
+    se_tag: tailwind-css
+
+  - type: product
+    name: Figma
+    tracked: false
+    context: r/FigmaDesign

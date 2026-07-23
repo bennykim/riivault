@@ -140,12 +140,20 @@ async def recluster_voc(
                     dupes = m["duplicates"]
                     # Fold the duplicates' per-day volume series into the
                     # canonical topic_id, then drop the duplicate series/rows.
+                    # Pre-aggregate by day: two duplicates sharing a day would
+                    # otherwise produce two (day, canonical) rows in one INSERT,
+                    # and ON CONFLICT cannot touch the same key twice.
                     await conn.execute(
                         """
                         INSERT INTO topic_daily
                             (day, topic_id, entity_id, label, volume, momentum)
-                        SELECT day, $1, entity_id, label, volume, momentum
+                        SELECT day, $1,
+                               (array_agg(entity_id ORDER BY day))[1],
+                               (array_agg(label ORDER BY day))[1],
+                               SUM(volume),
+                               (array_agg(momentum ORDER BY day))[1]
                           FROM topic_daily WHERE topic_id = ANY($2::bigint[])
+                         GROUP BY day
                         ON CONFLICT (day, topic_id) DO UPDATE
                             SET volume = topic_daily.volume + EXCLUDED.volume
                         """,

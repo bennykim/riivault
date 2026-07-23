@@ -106,17 +106,17 @@ WHAT CHANGED SINCE THE PREVIOUS REQUEST
    content, and they can be inspected in the public repository today.
 
 CONTACT
-Reddit username: /u/<your username>
+Reddit username: /u/GainNo6885
 Project: https://riivault.space
 Source: https://github.com/bennykim/riivault
 
 ================================================================
 FILL IN BEFORE SUBMITTING
 ================================================================
-- [ ] Replace /u/<your username> with the real account.
-- [ ] Set REDDIT_USER_AGENT in the deployment to the compliant format
-      (the checked-in default is a placeholder that fails validation on
-      purpose).
+- [x] Reddit username set: /u/GainNo6885.
+- [ ] Set REDDIT_USER_AGENT in the deployment to the compliant format,
+      e.g. web:riivault:v0.2 (by /u/GainNo6885). The checked-in default is
+      a placeholder that fails validation on purpose.
 - [ ] Confirm riivault.space has been free of Reddit branding for at
       least two weeks before submitting (corrected 2026-07-22).
 - [ ] Select the non-commercial / developer category on the form.

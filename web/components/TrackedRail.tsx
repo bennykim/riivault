@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { TrackedEntity } from "@/lib/types";
 import { sparkColor, sparkPoints } from "@/lib/chart";
 
@@ -16,7 +17,9 @@ export default function TrackedRail({ tracked }: { tracked: TrackedEntity[] }) {
             return (
               <tr key={t.entity_id}>
                 <td>
-                  <span className="en">{t.name}</span>
+                  <Link href={`/e/${t.entity_id}`} className="en">
+                    {t.name}
+                  </Link>
                   <br />
                   <span className="ec">{t.context ?? ""}</span>
                 </td>

@@ -22,6 +22,15 @@ export function signedDecimal(value: number, digits = 2): string {
     : value.toFixed(digits);
 }
 
+/** Compact large values for adoption charts: 33051 -> `33.1k`, 2.1M etc. */
+export function compact(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 10_000) return `${(value / 1_000).toFixed(1)}k`;
+  if (abs >= 1_000) return value.toLocaleString("en-US");
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
 /** ISO date (`2026-07-03`) -> dotted masthead form (`2026·07·03`). */
 export function dottedDate(iso: string): string {
   return iso.slice(0, 10).replace(/-/g, "·");

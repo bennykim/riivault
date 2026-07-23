@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { IssueData } from "@/lib/types";
 
 function Items({ issue }: { issue: IssueData }) {
@@ -7,7 +8,9 @@ function Items({ issue }: { issue: IssueData }) {
         const up = t.change_pct != null && t.change_pct >= 0;
         return (
           <span className="tk" key={t.entity_id}>
-            <b>{t.name}</b>
+            <b>
+              <Link href={`/e/${t.entity_id}`}>{t.name}</Link>
+            </b>
             {t.context && <span className="s">{t.context}</span>}
             <span className={up ? "up" : "down"}>
               {t.change_pct == null

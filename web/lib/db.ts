@@ -217,6 +217,149 @@ export async function getCurrentIssue(): Promise<IssueData | null> {
   } as IssueData;
 }
 
+// ---------------------------------------------------------------------------
+// Entity detail page (/e/[id]) — mention/sentiment/adoption series + VoC list.
+// Mirrors backend routes/entities.py get_entity_series (all sources combined).
+// ---------------------------------------------------------------------------
+
+export interface EntityDetail {
+  entity_id: number;
+  type: string;
+  name: string;
+  context: string | null;
+  /** repo / npm / pypi / se_tag mappings, when present. */
+  mappings: Record<string, string>;
+  tracked: boolean;
+}
+
+export interface AdoptionSeries {
+  source: string; // e.g. "github" | "npm" | "pypi" | "stackexchange"
+  metric: string; // e.g. "stars_total" | "downloads" | "questions"
+  series: { period: string; value: number }[];
+}
+
+export interface EntityVocItem {
+  fr_id: number;
+  kind: PainPoint["kind"];
+  text: string;
+  occurrences: number;
+  momentum_pct: number;
+  first_seen: string;
+  last_seen: string;
+}
+
+const MAPPING_KEYS = ["repo", "npm", "pypi", "se_tag"] as const;
+
+export async function getEntityDetail(
+  entityId: number,
+): Promise<EntityDetail | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT entity_id, type, canonical_name AS name,
+           metadata->>'context' AS context, metadata
+      FROM entity WHERE entity_id = ${entityId}
+  `;
+  if (!rows.length) return null;
+  const r = rows[0];
+  const metadata = (r.metadata ?? {}) as Record<string, unknown>;
+  const mappings: Record<string, string> = {};
+  for (const key of MAPPING_KEYS) {
+    if (typeof metadata[key] === "string") mappings[key] = metadata[key] as string;
+  }
+  return {
+    entity_id: Number(r.entity_id),
+    type: r.type as string,
+    name: r.name as string,
+    context: (r.context as string) ?? null,
+    mappings,
+    tracked: metadata.tracked === true,
+  };
+}
+
+/** Daily mentions summed across all sources (subreddit='' overall rows). */
+export async function getMentionSeries(
+  entityId: number,
+  days: number,
+): Promise<{ period: string; value: number }[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT day::text AS day, SUM(mention_count) AS value
+      FROM mention_daily
+     WHERE entity_id = ${entityId} AND subreddit = ''
+       AND day > CURRENT_DATE - ${days}::int
+     GROUP BY day ORDER BY day
+  `;
+  return rows.map((r) => ({ period: r.day as string, value: Number(r.value) }));
+}
+
+/** Daily sentiment pooled across sources, sample_size-weighted. */
+export async function getSentimentSeries(
+  entityId: number,
+  days: number,
+): Promise<{ period: string; value: number }[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT day::text AS day,
+           SUM(sentiment_mean * sample_size) / NULLIF(SUM(sample_size), 0) AS value
+      FROM sentiment_daily
+     WHERE entity_id = ${entityId} AND day > CURRENT_DATE - ${days}::int
+     GROUP BY day ORDER BY day
+  `;
+  return rows
+    .filter((r) => r.value !== null)
+    .map((r) => ({ period: r.day as string, value: round(Number(r.value), 3) }));
+}
+
+/** Adoption time-series grouped into one series per (source, metric). */
+export async function getAdoptionSeries(
+  entityId: number,
+  days: number,
+): Promise<AdoptionSeries[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT s.name AS source, a.metric, a.day::text AS day, a.value
+      FROM adoption_daily a JOIN source s USING (source_id)
+     WHERE a.entity_id = ${entityId} AND a.day > CURRENT_DATE - ${days}::int
+     ORDER BY s.name, a.metric, a.day
+  `;
+  const grouped = new Map<string, AdoptionSeries>();
+  for (const r of rows) {
+    const key = `${r.source}:${r.metric}`;
+    let entry = grouped.get(key);
+    if (!entry) {
+      entry = { source: r.source as string, metric: r.metric as string, series: [] };
+      grouped.set(key, entry);
+    }
+    entry.series.push({ period: r.day as string, value: Number(r.value) });
+  }
+  return [...grouped.values()];
+}
+
+/** The entity's VoC ledger entries, most recently seen first. */
+export async function getEntityVoc(
+  entityId: number,
+  limit = 20,
+): Promise<EntityVocItem[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT fr_id, kind, normalized_text AS text, occurrences, momentum,
+           first_seen::text AS first_seen, last_seen::text AS last_seen
+      FROM feature_request
+     WHERE entity_id = ${entityId}
+     ORDER BY last_seen DESC, occurrences DESC, fr_id DESC
+     LIMIT ${limit}
+  `;
+  return rows.map((r) => ({
+    fr_id: Number(r.fr_id),
+    kind: r.kind as PainPoint["kind"],
+    text: r.text as string,
+    occurrences: Number(r.occurrences),
+    momentum_pct: round(Number(r.momentum ?? 0) * 100, 1),
+    first_seen: r.first_seen as string,
+    last_seen: r.last_seen as string,
+  }));
+}
+
 /** subscribe.py — insert-or-ignore; `created` is false when the email already
  *  existed (the API layer maps that to 201 vs 200). */
 export async function subscribeEmail(

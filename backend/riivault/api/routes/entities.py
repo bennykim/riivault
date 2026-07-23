@@ -78,34 +78,38 @@ async def get_entity_series(
 ):
     metric = "sentiment" if metric == "sentiment" else "mentions"
     async with pool.acquire() as conn:
-        source_id = await conn.fetchval(
-            "SELECT source_id FROM source WHERE name = 'reddit'"
-        )
         if not await conn.fetchval(
             "SELECT 1 FROM entity WHERE entity_id = $1", entity_id
         ):
             raise HTTPException(status_code=404, detail="entity not found")
+        # Combined across all sources: mentions are summed per day; sentiment
+        # is pooled weighted by each source's sample_size (same pooling as
+        # issue._sentiment_focus). A single-source filter would return empty
+        # series now that collection is HN/GitHub/PH rather than Reddit.
         if metric == "sentiment":
             rows = await conn.fetch(
                 """
-                SELECT day, sentiment_mean AS value
+                SELECT day,
+                       SUM(sentiment_mean * sample_size)
+                           / NULLIF(SUM(sample_size), 0) AS value
                   FROM sentiment_daily
-                 WHERE entity_id = $1 AND source_id = $2
-                   AND day > CURRENT_DATE - $3::int
+                 WHERE entity_id = $1 AND day > CURRENT_DATE - $2::int
+                 GROUP BY day
                  ORDER BY day
                 """,
-                entity_id, source_id, days,
+                entity_id, days,
             )
         else:
             rows = await conn.fetch(
                 """
-                SELECT day, mention_count AS value
+                SELECT day, SUM(mention_count) AS value
                   FROM mention_daily
-                 WHERE entity_id = $1 AND source_id = $2 AND subreddit = ''
-                   AND day > CURRENT_DATE - $3::int
+                 WHERE entity_id = $1 AND subreddit = ''
+                   AND day > CURRENT_DATE - $2::int
+                 GROUP BY day
                  ORDER BY day
                 """,
-                entity_id, source_id, days,
+                entity_id, days,
             )
 
     series = []

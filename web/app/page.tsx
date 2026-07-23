@@ -23,7 +23,7 @@ export default async function Page() {
 
   return (
     <div className="page">
-      <Masthead issue={issue} />
+      <Masthead issue={issue} isSample={isSample} />
       <Ticker issue={issue} />
       <div className="grid">
         <Lead issue={issue} />

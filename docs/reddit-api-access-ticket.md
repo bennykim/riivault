@@ -1,11 +1,13 @@
-riivault — Reddit Data API access request (v0.2)
+# riivault — Reddit Data API access request (v0.2)
+
 Non-commercial · read-only · derived aggregates only
 Submit target: on or after 2026-08-05
 
-================================================================
-PASTE-READY TICKET BODY  (everything below the line)
-================================================================
+## Paste-ready ticket body
 
+Copy the entire block below (one click on most renderers' copy button) and paste it as-is into the Reddit access request form.
+
+```text
 SUMMARY
 riivault is a non-commercial trend-research project. It turns public
 discussion in one niche (SaaS / indie-hacker communities) into derived
@@ -109,13 +111,13 @@ CONTACT
 Reddit username: /u/GainNo6885
 Project: https://riivault.space
 Source: https://github.com/bennykim/riivault
+```
 
-================================================================
-FILL IN BEFORE SUBMITTING
-================================================================
-- [x] Reddit username set: /u/GainNo6885.
-- [ ] Set REDDIT_USER_AGENT in the deployment to the compliant format,
-      e.g. web:riivault:v0.2 (by /u/GainNo6885). The checked-in default is
+## Fill in before submitting
+
+- [x] Reddit username set: `/u/GainNo6885`.
+- [ ] Set `REDDIT_USER_AGENT` in the deployment to the compliant format,
+      e.g. `web:riivault:v0.2 (by /u/GainNo6885)`. The checked-in default is
       a placeholder that fails validation on purpose.
 - [ ] Confirm riivault.space has been free of Reddit branding for at
       least two weeks before submitting (corrected 2026-07-22).
